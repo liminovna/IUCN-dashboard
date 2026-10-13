@@ -1,0 +1,6 @@
+clickhouse-connect==1.8.0
+python-dotenv==1.2.3
+numpy==2.5.3
+pandas==3.0.6
+requests==2.34.2
+urllib3==2.8.0

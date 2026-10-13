@@ -1,0 +1,99 @@
+/* DASHBOARD LEVEL */
+
+/* Dashboard tabs */
+div[role="tab"] .editable-title {
+    color: #4c4b4a !important;
+    font-weight: 800;
+}
+/* Change the active tab underline/border color */
+.ant-tabs-ink-bar {
+    background-color: #ad180d !important;
+  }
+
+/* Chart containers */
+.chart-container {
+    margin: 0px;
+    padding: 0px;
+  }
+
+/* Tables and pivot tables*/
+.dashboard-chart table thead th {
+  background-color: #e3e2e2;
+  color: #000000;
+  font-weight: 800;
+  padding: 10px 12px;
+  border-bottom: 2px solid #AD180D;
+  border-top:none !important;
+  border-left:none !important;
+  border-right: none !important;
+}
+
+/* Hide scroll bar for markdown blocks */
+.superset-u9tuho.dashboard-markdown .dashboard-component-chart-holder {
+	overflow: hidden;
+	border-radius: 6px;
+}
+
+/* Center text and color black*/
+table.pvtTable tbody tr td.pvtVal {
+color:black;
+text-align:center !important ;
+}
+
+/* Remove borders in table headers*/
+table.pvtTable thead *  {
+    border-top:none !important;
+    /*border-bottom:none !important;*/
+    border-left:none !important;
+    border-right:none !important;
+    }
+    
+/* SPECIFIC CHARTS */
+
+/* Table population_trends_over_time*/
+.dashboard-chart-id-11 table.pvtTable thead tr th.pvtAxisLabel:nth-child(2) {color: #e3e2e2;} 
+.dashboard-chart-id-11 table thead th {
+  border-bottom: 2px solid #e3e2e2;
+}
+.dashboard-chart-id-11 table thead th:nth-child(3) {
+  border-bottom: 2px solid #AD180D;
+}
+
+/* Hide Big number chart title */
+[data-test-chart-id="1"] > div:first-child {
+    display: none;
+}
+[data-test-chart-id="2"] > div:first-child {
+    display: none;
+}
+[data-test-chart-id="33"] > div:first-child {
+    display: none;
+}
+
+/* Force the text container to fill the entire chart height */
+.dashboard-chart-id-2 .text-container,
+.dashboard-chart-id-1 .text-container,
+.dashboard-chart-id-33 .text-container,
+.big_number .text-container {
+  height: 100% !important;
+  display: flex !important;
+  align-items: left !important;
+  justify-content: center !important;
+}
+
+/* Big number, wrap subtitle */
+.dashboard-chart-id-33 .subheader-line {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    display: block !important;
+}
+
+/* Allow the big number text to scale or adjust alignment */
+.dashboard-chart-id-2 .header-line,
+.dashboard-chart-id-1 .header-line,
+.dashboard-chart-id-33 .header-line,
+.big_number .header-line {
+  height: auto !important;
+  font-size: clamp(20px, 15vw, 60px) !important;
+}
