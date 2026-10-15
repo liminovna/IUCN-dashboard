@@ -8,10 +8,10 @@ import pandas as pd
 import numpy as np
 
 from airflow.decorators import dag, task
+from airflow.sdk import get_current_context
 from airflow.exceptions import AirflowSkipException, AirflowFailException
-from airflow.models import Param
-
-import clickhouse_connect as cc
+from airflow.models import Param, TaskInstance
+from airflow.providers.clickhousedb.hooks.clickhouse import ClickHouseHook
 
 # =====================================
 # Import credentials
@@ -22,14 +22,13 @@ load_dotenv()
 token = os.environ.get('iucn_token')
 url = os.environ.get('iucn_api_url')
 
-host = os.environ.get('clickhouse_server')
-username = os.environ.get('clickhouse_username')
-password = os.environ.get('clickhouse_password')
-port = os.environ.get('clickhouse_port')
+hook = ClickHouseHook(clickhouse_conn_id="clickhouse")
 
 # logging
 import logging
 logger = logging.getLogger(__name__)
+
+from data_quality import dataQualityReport
 
 def parse_levels(reference: json) -> dict:
     """
@@ -113,17 +112,46 @@ def decode_enum(code: str, levels: dict) -> tuple:
     return (lvl1, lvl2, lvl3)
 
 @task
-def check__data(data: json, json_key: str, columns: list) -> bool:
-    """
-    Check if the file structure contains all necessary columns and is not empty
-    """
-    condition = \
-        json_key in data and \
-        len(data[json_key]) > 0 and \
-        all([k in data[json_key][0].keys() for k in columns])
-    if not condition:
-        logger.error('Invalid file structure for %s!', json_key)
-        raise AirflowSkipException
+def check_data_quality(upstream_result:dict, checks: dict):
+    logger.info('Collecting meta info...')
+
+    airflow_data = {
+        "airflow__dag_id": upstream_result['metadata']['dag_id'],
+        "airflow__run_id": upstream_result['metadata']['run_id'],
+        "airflow__source_task_id": upstream_result['metadata']['upstream_task_id'],
+        "airflow__source_start_date": upstream_result['metadata']['upstream_started_at'],
+        "airflow__source_end_date": upstream_result['metadata']['upstream_ended_at'],
+    }
+
+    logger.info('Initializing class instance...')
+    
+    if isinstance(upstream_result['data'], pd.DataFrame):
+        data = upstream_result['data']
+    elif isinstance(upstream_result['data'], str):
+        with hook.get_client() as client:
+            data = client.query_df(f"select * from {upstream_result['data']}")
+
+    data_check_report = dataQualityReport(airflow_data=airflow_data, data=data, checks=checks)
+
+    if data_check_report.critical_errors:
+        logger.error('Data did not pass data quality check!')
+        # raise AirflowFailException
+
+    if data_check_report.noncritical_errors:
+        logger.warning('Data quality checks passed with non-critical errors')
+
+    df = data_check_report.data_quality_checks_df
+    for c in airflow_data.keys():
+        df[c] = airflow_data[c]
+
+    logger.info('Writing to db...')
+
+    with hook.get_client() as client:
+        client.insert_df(
+            table='data_quality.main',
+            df=df,
+            column_names=list(df.columns),
+        )
 
 dag_doc = """
 # IUCN reference data: API to Clickhouse
@@ -176,7 +204,7 @@ def iucn_load_red_list_categories_mapping():
     @task
     def extract__red_list_categories(token: str, url: str, params=None) -> json: 
         """
-        Get dictionary of Red List categories
+        Get dictionary of Red List categories. Abort DAG if no data
         """
         res = requests.get(
                 url + 'red_list_categories/',
@@ -185,9 +213,23 @@ def iucn_load_red_list_categories_mapping():
                     'accept':'*/*'
                 }
         )
+        
         res.raise_for_status()
         logger.info('Obtained data for %s', params['table_name'])
-        return res.json()
+        res = res.json()
+
+        # System critical data quality check
+        main_key = 'red_list_categories'
+        if main_key not in res:
+            logger.error('Main key `%s` missing!', main_key)
+            raise AirflowFailException
+        if len(res[main_key]) == 0:
+            logger.error('Empty response!')
+            raise AirflowFailException
+        if not all(c in res[main_key][0].keys() for c in ['version', 'description', 'code']) or 'en' not in res[main_key][0]['description']:
+            logger.error('Unexpected data structure')
+            raise AirflowFailException
+        return res
 
     @task
     def transform__red_list_categories(data: json, params=None) -> pd.DataFrame:
@@ -220,54 +262,149 @@ def iucn_load_red_list_categories_mapping():
         df['description'] = df['description'].apply(lambda x: x['en'])
         # apply mapping
         df['category_sorted'] = df.apply(assign_order, axis=1)
+        df.drop(df[df['version'].isna()].index)
         logger.info('Transformed data for %s', params['table_name'])
-        return df
+
+        # System critical data quality checks
+        if len(df) == 0:
+            logger.error('Empty dataframe!')
+            raise AirflowFailException
+
+        required_columns = set(['version', 'description', 'code', 'category_sorted'])
+        if set(df.columns) != required_columns:
+            logger.error('Unexpected data structure!')
+            raise AirflowFailException
+
+        context = get_current_context()
+        ti = context["ti"]
+        
+        return {
+            "data": df,
+            "metadata": {
+                'dag_id': context["dag"].dag_id,
+                "run_id": context["dag_run"].run_id,
+                "upstream_task_id": ti.task_id,
+                "upstream_started_at": ti.start_date,
+                "upstream_ended_at": datetime.now(),
+            },
+        }
+
+    # ===============================
+    # Data quality check on dataframe
+    # - row count
+    # - CR: not empty on description
+    # - CR: unique on (version, code)
+    # - not empty version
+    # - not empty code
+    # - number of values in category_sorted
+    # ===============================
 
     @task
-    def load__red_list_categories(df: pd.DataFrame, host: str, port: str, username: str, password: str, params=None) -> None:
+    def load__red_list_categories(upstream_result: dict, params=None) -> None:
         """
         Load dataframe to database with replacement. Create table beforehand if id does not exist.
         """
+        df = upstream_result['data']
         table_name = params['table_name']
-        if len(df) == 0:
-            raise AirflowFailException("Empty dataframe! Aborting...")
 
-        # logger.info('Trying to connect to database: %s:%s', host, port)
-        with cc.get_client(host=host, port=port, username=username, password=password) as client:
-            # truncate and create if necessary
-            client.command(f'TRUNCATE TABLE IF EXISTS dict.{table_name}')
+        with hook.get_client() as client:
+            # create if necessary and truncate
             ddl = f"""CREATE TABLE IF NOT EXISTS dict.{table_name} (
                 version         Nullable(String),
                 description     String,
-                code            String,
+                code            Nullable(String),
                 category_sorted Nullable(String),
                 `CREATE_DTTM`   DateTime default now()
             )"""
             client.command(ddl)
+            client.command(f'TRUNCATE TABLE dict.{table_name}')
 
             # load
             query_result = client.insert_df(
-                table=table_name,
+                table=f'dict.{table_name}',
                 df=df,
                 column_names=list(df.columns),
             )
+
         logger.info('Table %s: %s', table_name, query_result.summary)
+
+        context = get_current_context()
+        ti = context["ti"]
+
+        return {
+            "data": f'dict.{table_name}',
+            "metadata": {
+                'dag_id': context["dag"].dag_id,
+                "run_id": context["dag_run"].run_id,
+                "upstream_task_id": ti.task_id,
+                "upstream_started_at": ti.start_date,
+                "upstream_ended_at": datetime.now(),
+            },
+        }
+
+    # ===============================
+    # Data quality check inside the database
+    # - CR: table not empty
+    # ===============================
 
     # sequence
     json_ = extract__red_list_categories(token, url)
+    upstream_df_ = transform__red_list_categories(data=json_)
 
-    check_ = check__data.override(
-        task_id="check__red_list_categories",
+    transform_dq_check_ = check_data_quality.override(
+        task_id="dq__transform__red_list_categories",
     )(
-        data=json_, 
-        json_key='red_list_categories', 
-        columns=['code', 'description', 'version']
-    )
-    df_ = transform__red_list_categories(data=json_)
-    check_ >> df_
+        upstream_result=upstream_df_, 
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': False,
 
-    load__red_list_categories(df=df_, host=host, port=port, username=username, password=password)
-    
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'description',
+                'critical': True,
+            },
+            {
+                'check_name': 'uniqueness',
+                'check_subset': ('version', 'code'),
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'version',
+                'critical': False,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'code',
+                'critical': False,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'category_sorted',
+                'critical': False,
+            }
+        ]
+    )
+
+    upstream_result_db_ = load__red_list_categories(upstream_result=upstream_df_)
+    transform_dq_check_ >> upstream_result_db_
+
+    load_dq_check_ = check_data_quality.override(
+        task_id="dq__load__red_list_categories",
+    )(
+        upstream_result=upstream_result_db_, 
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+
+            }
+        ]
+    )
+    upstream_result_db_ >> load_dq_check_
     
 # =============================================
 # Threats
@@ -313,7 +450,20 @@ def iucn_load_threats__dict():
         )
         res.raise_for_status()
         logger.info('Obtained data for %s', params['table_name'])
-        return res.json()
+        res = res.json()
+
+        # System critical data quality check
+        main_key = 'threats'
+        if main_key not in res:
+            logger.error('Main key `%s` missing!', main_key)
+            raise AirflowFailException
+        if len(res[main_key]) == 0:
+            logger.error('Empty response!')
+            raise AirflowFailException
+        if not all(c in res[main_key][0].keys() for c in ['description', 'code']) or 'en' not in res[main_key][0]['description']:
+            logger.error('Unexpected data structure')
+            raise AirflowFailException
+        return res
 
     @task
     def transform__threats(data: json, params=None) -> pd.DataFrame:
@@ -339,20 +489,54 @@ def iucn_load_threats__dict():
             logger.warning('Threat codes missing!')
 
         logger.info('Transformed data for %s', params['table_name'])
-        return df
+
+        # System critical data quality check
+        if len(df) == 0:
+            logger.error('Empty dataframe!')
+            raise AirflowFailException
+
+        required_columns = set(['description', 'code', 'threat_lvl1', 'threat_lvl2', 'threat_lvl3'])
+        if set(df.columns) != required_columns:
+            logger.error('Unexpected data structure')
+            raise AirflowFailException
+
+        context = get_current_context()
+        ti = context["ti"]
+        
+        return {
+            "data": df,
+            "metadata": {
+                'dag_id': context["dag"].dag_id,
+                "run_id": context["dag_run"].run_id,
+                "upstream_task_id": ti.task_id,
+                "upstream_started_at": ti.start_date,
+                "upstream_ended_at": datetime.now(),
+            },
+        }
+
+    # ===============================
+    # Data quality check on dataframe
+    # - row count
+    # - CR: not empty on description
+    # - CR: not empty on code
+    # - CR: not empty on threat_lvl1
+    # - CR: unique on (code)
+    # - number of values in threat_lvl2
+    # - number of values in threat_lvl3
+    # ===============================
         
     @task
-    def load__threats(df: pd.DataFrame, host: str, port: str, username: str, password: str, params=None) -> None:
+    def load__threats(upstream_result: dict, params=None) -> None:
         """
         Load dataframe to database with replacement. Create table beforehand if id does not exist.
         """
+        df = upstream_result['data']
         table_name = params['table_name']
         if len(df) == 0:
             raise AirflowFailException("Empty dataframe! Aborting...")
 
-        with cc.get_client(host=host, port=port, username=username, password=password) as client:
-            # truncate and create if necessary
-            client.command(f'TRUNCATE TABLE IF EXISTS dict.{table_name}')
+        with hook.get_client() as client:
+            # create if necessary and truncate
             ddl = f"""CREATE TABLE IF NOT EXISTS dict.{table_name} (
                 description      Nullable(String),
                 code             String,
@@ -363,30 +547,98 @@ def iucn_load_threats__dict():
             )
             PRIMARY KEY (code)"""
             client.command(ddl)
+            client.command(f'TRUNCATE TABLE dict.{table_name}')
             
             # load
             query_result = client.insert_df(
-                table=table_name,
+                table=f'dict.{table_name}',
                 df=df,
                 column_names=list(df.columns),
             )
         logger.info('Table %s: %s', table_name, query_result.summary)
 
+        context = get_current_context()
+        ti = context["ti"]
+
+        return {
+            "data": f'dict.{table_name}',
+            "metadata": {
+                'dag_id': context["dag"].dag_id,
+                "run_id": context["dag_run"].run_id,
+                "upstream_task_id": ti.task_id,
+                "upstream_started_at": ti.start_date,
+                "upstream_ended_at": datetime.now(),
+            },
+        }
+
+    # ===============================
+    # Data quality check inside the database
+    # - CR: table not empty
+    # ===============================
+
     # sequence
     json_ = extract__threats(token, url)
+    upstream_df_ = transform__threats(data=json_)
 
-    check_ = check__data.override(
-        task_id="check__threats",
+    transform_dq_check_ = check_data_quality.override(
+        task_id="dq__transform__threats",
     )(
-        data=json_, 
-        json_key='threats', 
-        columns=['description', 'code']
+        upstream_result=upstream_df_, 
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': False,
+
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'description',
+                'critical': True,
+            },
+            {
+                'check_name': 'uniqueness',
+                'check_subset': ('code'),
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'code',
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'threat_lvl1',
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'threat_lvl2',
+                'critical': False,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'threat_lvl3',
+                'critical': False,
+            },
+        ]
     )
-    df_ = transform__threats(data=json_)
-    check_ >> df_
 
-    load__threats(df=df_, host=host, port=port, username=username, password=password)
+    upstream_result_db_ = load__threats(upstream_result=upstream_df_)
+    transform_dq_check_ >> upstream_result_db_
 
+    load_dq_check_ = check_data_quality.override(
+        task_id="dq__load__threats",
+    )(
+        upstream_result=upstream_result_db_, 
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+
+            }
+        ]
+    )
+    upstream_result_db_ >> load_dq_check_
 
 # =============================================
 # Stresses
@@ -432,10 +684,23 @@ def iucn_load_stresses__dict():
         )
         res.raise_for_status()
         logger.info('Obtained data for %s', params['table_name'])
-        return res.json()
+        res = res.json()
+
+        # System critical data quality check
+        main_key = 'stresses'
+        if main_key not in res:
+            logger.error('Main key `%s` missing!', main_key)
+            raise AirflowFailException
+        if len(res[main_key]) == 0:
+            logger.error('Empty response!')
+            raise AirflowFailException
+        if not all(c in res[main_key][0].keys() for c in ['description', 'code']) or 'en' not in res[main_key][0]['description']:
+            logger.error('Unexpected data structure')
+            raise AirflowFailException
+        return res
 
     @task
-    def transform__stresses(data: json, params) -> pd.DataFrame:
+    def transform__stresses(data: json, params=None) -> pd.DataFrame:
         """
         Parse JSON, convert to dataframe and add levels.
         """
@@ -458,20 +723,53 @@ def iucn_load_stresses__dict():
             logger.warning('Stress codes missing!')
 
         logger.info('Transformed data for %s', params['table_name'])
-        return df
+
+        # System critical data quality check
+        if len(df) == 0:
+            logger.error('Empty dataframe!')
+            raise AirflowFailException
+
+        required_columns = set(['description', 'code', 'stress_lvl1', 'stress_lvl2', 'stress_lvl3'])
+        if set(df.columns) != required_columns:
+            logger.error('Unexpected data structure')
+            raise AirflowFailException
+
+        context = get_current_context()
+        ti = context["ti"]
+        
+        return {
+            "data": df,
+            "metadata": {
+                'dag_id': context["dag"].dag_id,
+                "run_id": context["dag_run"].run_id,
+                "upstream_task_id": ti.task_id,
+                "upstream_started_at": ti.start_date,
+                "upstream_ended_at": datetime.now(),
+            },
+        }
+
+    # ===============================
+    # Data quality check on dataframe
+    # - row count
+    # - CR: not empty on description
+    # - CR: not empty on code
+    # - CR: not empty on stress_lvl1
+    # - CR: unique on code
+    # - number of values in stress_lvl2, stress_lvl3
+    # ===============================
 
     @task
-    def load__stresses(df: pd.DataFrame, host: str, port: str, username: str, password: str, params=None) -> None:
+    def load__stresses(upstream_result: dict, params=None) -> None:
         """
         Load dataframe to database with replacement. Create table beforehand if id does not exist.
         """
+        df = upstream_result['data']
         table_name = params['table_name']
         if len(df) == 0:
             raise AirflowFailException("Empty dataframe! Aborting...")
             
-        with cc.get_client(host=host, port=port, username=username, password=password) as client:
-            # truncate and create if necessary
-            client.command(f'TRUNCATE TABLE IF EXISTS dict.{table_name}')
+        with hook.get_client() as client:
+            # create if necessary and truncate
             ddl = f"""CREATE TABLE IF NOT EXISTS dict.{table_name} (
                 description      String,
                 code             String,
@@ -482,29 +780,98 @@ def iucn_load_stresses__dict():
             )
             PRIMARY KEY (code)"""
             client.command(ddl)
+            client.command(f'TRUNCATE TABLE dict.{table_name}')
             
             # load
             query_result = client.insert_df(
-                table=table_name,
+                table=f'dict.{table_name}',
                 df=df,
                 column_names=list(df.columns),
             )
         logger.info('Table %s: %s', table_name, query_result.summary)
 
+        context = get_current_context()
+        ti = context["ti"]
+
+        return {
+            "data": f'dict.{table_name}',
+            "metadata": {
+                'dag_id': context["dag"].dag_id,
+                "run_id": context["dag_run"].run_id,
+                "upstream_task_id": ti.task_id,
+                "upstream_started_at": ti.start_date,
+                "upstream_ended_at": datetime.now(),
+            },
+        }
+
+    # ===============================
+    # Data quality check inside the database
+    # - CR: table not empty
+    # ===============================
+
     # sequence
     json_ = extract__stresses(token, url)
+    upstream_df_ = transform__stresses(data=json_)
 
-    check_ = check__data.override(
-        task_id="check__stresses",
+    transform_dq_check_ = check_data_quality.override(
+        task_id="dq__transform__stresses",
     )(
-        data=json_, 
-        json_key='stresses', 
-        columns=['description', 'code']
-    )
-    df_ = transform__stresses(data=json_)
-    check_ >> df_
+        upstream_result=upstream_df_, 
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': False,
 
-    load__stresses(df=df_, host=host, port=port, username=username, password=password)
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'description',
+                'critical': True,
+            },
+            {
+                'check_name': 'uniqueness',
+                'check_subset': ('code'),
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'code',
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'stress_lvl1',
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'stress_lvl2',
+                'critical': False,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'stress_lvl3',
+                'critical': False,
+            },
+        ]
+    )
+
+    upstream_result_db_ = load__stresses(upstream_result=upstream_df_)
+    transform_dq_check_ >> upstream_result_db_
+
+    load_dq_check_ = check_data_quality.override(
+        task_id="dq__load__stresses",
+    )(
+        upstream_result=upstream_result_db_, 
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+
+            }
+        ]
+    )
+    upstream_result_db_ >> load_dq_check_
 
 # ==============================================
 # Habitats and systems mapping
@@ -550,7 +917,20 @@ def iucn_load_habitat_system_mapping():
         )
         res.raise_for_status()
         logger.info('Obtained data for %s', params['table_name'])
-        return res.json()
+        res = res.json()
+
+        # System critical data quality check
+        main_key = 'habitats'
+        if main_key not in res:
+            logger.error('Main key `%s` missing!', main_key)
+            raise AirflowFailException
+        if len(res[main_key]) == 0:
+            logger.error('Empty response!')
+            raise AirflowFailException
+        if not all(c in res[main_key][0].keys() for c in ['description', 'code']) or 'en' not in res[main_key][0]['description']:
+            logger.error('Unexpected data structure')
+            raise AirflowFailException
+        return res
     
     @task
     def transform__habitats(data: json, params=None) -> pd.DataFrame:
@@ -574,13 +954,13 @@ def iucn_load_habitat_system_mapping():
         )
 
         # expand 3rd-level value with 1st and 2nd levels
-        def foo(row):
+        def expand_habitat(row):
             if row['habitat_lvl3']:
                 lvl12 = '_'.join(row['code'].split('_')[:2])
                 match = df[df['code']==lvl12].iloc[0]
                 return (match['habitat_lvl1'], match['habitat_lvl2'])
             return (row['habitat_lvl1'], row['habitat_lvl2'])
-        df[['habitat_lvl1', 'habitat_lvl2']] = df.apply(foo, axis=1).apply(pd.Series)
+        df[['habitat_lvl1', 'habitat_lvl2']] = df.apply(expand_habitat, axis=1).apply(pd.Series)
 
         # check if level assignment is correct
         for _, row in df.iterrows():
@@ -623,33 +1003,57 @@ def iucn_load_habitat_system_mapping():
         }
         df['system'] = df['habitat_lvl1'].apply(lambda x: mapping.get(x))
 
-        # check for duplicated codes
-        if len(df[df.duplicated(subset='habitat_code')]):
-            logger.warning('Duplicated habitat_code found!')
-
-        # check for completeness of the 1st-level habitats and codes
-        if df['habitat_lvl1'].isna().sum():
-            logger.warning('1st-level habitats missing!')
-
-        if df['habitat_code'].isna().sum():
-            logger.warning('Habitat codes missing!')
-
         logger.info('Transformed data for %s', params['table_name'])
-        return df
+
+        # System critical data quality check
+        if len(df) == 0:
+            logger.error('Empty dataframe!')
+            raise AirflowFailException
+
+        required_columns = set(['habitat', 'habitat_code', 'habitat_lvl1', 'habitat_lvl2', 'habitat_lvl3', 'system'])
+        if set(df.columns) != required_columns:
+            logger.error('Unexpected data structure')
+            raise AirflowFailException
+
+        context = get_current_context()
+        ti = context["ti"]
+        
+        return {
+            "data": df,
+            "metadata": {
+                'dag_id': context["dag"].dag_id,
+                "run_id": context["dag_run"].run_id,
+                "upstream_task_id": ti.task_id,
+                "upstream_started_at": ti.start_date,
+                "upstream_ended_at": datetime.now(),
+            },
+        }
+
+    # ===============================
+    # Data quality check on dataframe
+    # - row number
+    # - CR: unique on habitat
+    # - CR: not empty on habitat
+    # - CR: unique on habitat_code
+    # - CR: not empty on habitat_code
+    # - CR: unique on habitat_lvl1
+    # - CR: not empty on habitat_lvl1
+    # - CR: unique on habitat_lvl1, habitat_lvl2, habitat_lvl3
+    # - number of values in habitat_lvl2, habitat_lvl3, system
+    # ===============================
 
     @task
-    def load__habitats_dict(df: pd.DataFrame, host: str, port: str, username: str, password: str, params=None) -> None:
+    def load__habitats(upstream_result: dict, params=None) -> None:
         """
         Load dataframe to database with replacement. Create table beforehand if id does not exist.
         """
+        df = upstream_result['data']
         table_name = params['table_name']
         if len(df) == 0:
             raise AirflowFailException("Empty dataframe! Aborting...")
             
-        # truncate and create if necessary
-        logger.info('Trying to connect to database: %s:%s', host, port)
-        with cc.get_client(host=host, port=port, username=username, password=password) as client:
-            client.command(f'TRUNCATE TABLE IF EXISTS dict.{table_name}')
+        with hook.get_client() as client:
+            # create if necessary and truncate
             ddl = f"""CREATE TABLE IF NOT EXISTS  dict.{table_name}(
                 habitat         String,
                 habitat_code    String,
@@ -661,30 +1065,112 @@ def iucn_load_habitat_system_mapping():
             )
             PRIMARY KEY (habitat_code)"""
             client.command(ddl)
+            client.command(f'TRUNCATE TABLE dict.{table_name}')
             
             # load
             query_result = client.insert_df(
-                table=table_name,
+                table=f'dict.{table_name}',
                 df=df,
                 column_names=list(df.columns),
             )
         logger.info('Table %s: %s', table_name, query_result.summary)
 
+        context = get_current_context()
+        ti = context["ti"]
+
+        return {
+            "data": f'dict.{table_name}',
+            "metadata": {
+                'dag_id': context["dag"].dag_id,
+                "run_id": context["dag_run"].run_id,
+                "upstream_task_id": ti.task_id,
+                "upstream_started_at": ti.start_date,
+                "upstream_ended_at": datetime.now(),
+            },
+        }
+    # ===============================
+    # Data quality check inside the database
+    # - CR: table is not empty
+    # ===============================
 
     json_ = extract__habitats(token, url)
+    upstream_df_ = transform__habitats(data=json_)
 
-    check_ = check__data.override(
-        task_id="check__habitats",
-        )(
-            data=json_,
-            json_key='habitats',
-            columns=['description', 'code'],
-        )
-    df_ = transform__habitats(data=json_)
-    check_ >> df_
+    transform_dq_check_ = check_data_quality.override(
+        task_id="dq__transform__habitats",
+    )(
+        upstream_result=upstream_df_, 
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': False,
 
-    load__habitats_dict(df=df_, host=host, port=port, username=username, password=password)
-    
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'habitat',
+                'critical': True,
+            },
+            {
+                'check_name': 'uniqueness',
+                'check_subset': ('habitat'),
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'habitat_code',
+                'critical': True,
+            },
+            {
+                'check_name': 'uniqueness',
+                'check_subset': ('habitat_code'),
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'habitat_lvl1',
+                'critical': True,
+            },
+            {
+                'check_name': 'uniqueness',
+                'check_subset': ('habitat_lvl1', 'habitat_lvl2', 'habitat_lvl3'),
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'habitat_lvl1',
+                'critical': True,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'habitat_lvl2',
+                'critical': False,
+            },
+            {
+                'check_name': 'completeness',
+                'check_subset': 'habitat_lvl3',
+                'critical': False,
+            },
+        ]
+    )
+
+    upstream_result_db_ = load__habitats(upstream_result=upstream_df_)
+    transform_dq_check_ >> upstream_result_db_
+
+    load_dq_check_ = check_data_quality.override(
+        task_id="dq__load__habitats",
+    )(
+        upstream_result=upstream_result_db_,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+
+            }
+        ]
+    )
+    upstream_result_db_ >> load_dq_check_
+
 iucn_load_red_list_categories_mapping()
 iucn_load_threats__dict()
 iucn_load_stresses__dict()
