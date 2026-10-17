@@ -2,15 +2,13 @@ from datetime import datetime
 import json
 import os
 import requests
-from typing import Tuple
 
 import pandas as pd
 import numpy as np
 
-from airflow.decorators import dag, task
-from airflow.sdk import get_current_context
-from airflow.exceptions import AirflowSkipException, AirflowFailException
-from airflow.models import Param, TaskInstance
+from airflow.sdk import get_current_context,  dag, task
+from airflow.sdk.exceptions import AirflowFailException
+from airflow.models import Param
 from airflow.providers.clickhousedb.hooks.clickhouse import ClickHouseHook
 
 # =====================================
@@ -28,7 +26,8 @@ hook = ClickHouseHook(clickhouse_conn_id="clickhouse")
 import logging
 logger = logging.getLogger(__name__)
 
-from data_quality import dataQualityReport
+from data_quality import check_data_quality
+check_data_quality_task = task(check_data_quality)
 
 def parse_levels(reference: json) -> dict:
     """
@@ -111,47 +110,6 @@ def decode_enum(code: str, levels: dict) -> tuple:
         lvl3 = None
     return (lvl1, lvl2, lvl3)
 
-@task
-def check_data_quality(upstream_result:dict, checks: dict):
-    logger.info('Collecting meta info...')
-
-    airflow_data = {
-        "airflow__dag_id": upstream_result['metadata']['dag_id'],
-        "airflow__run_id": upstream_result['metadata']['run_id'],
-        "airflow__source_task_id": upstream_result['metadata']['upstream_task_id'],
-        "airflow__source_start_date": upstream_result['metadata']['upstream_started_at'],
-        "airflow__source_end_date": upstream_result['metadata']['upstream_ended_at'],
-    }
-
-    logger.info('Initializing class instance...')
-    
-    if isinstance(upstream_result['data'], pd.DataFrame):
-        data = upstream_result['data']
-    elif isinstance(upstream_result['data'], str):
-        with hook.get_client() as client:
-            data = client.query_df(f"select * from {upstream_result['data']}")
-
-    data_check_report = dataQualityReport(airflow_data=airflow_data, data=data, checks=checks)
-
-    if data_check_report.critical_errors:
-        logger.error('Data did not pass data quality check!')
-        # raise AirflowFailException
-
-    if data_check_report.noncritical_errors:
-        logger.warning('Data quality checks passed with non-critical errors')
-
-    df = data_check_report.data_quality_checks_df
-    for c in airflow_data.keys():
-        df[c] = airflow_data[c]
-
-    logger.info('Writing to db...')
-
-    with hook.get_client() as client:
-        client.insert_df(
-            table='data_quality.main',
-            df=df,
-            column_names=list(df.columns),
-        )
 
 dag_doc = """
 # IUCN reference data: API to Clickhouse
@@ -332,7 +290,7 @@ def iucn_load_red_list_categories_mapping():
         ti = context["ti"]
 
         return {
-            "data": f'dict.{table_name}',
+            "db_table": f'dict.{table_name}',
             "metadata": {
                 'dag_id': context["dag"].dag_id,
                 "run_id": context["dag_run"].run_id,
@@ -351,7 +309,7 @@ def iucn_load_red_list_categories_mapping():
     json_ = extract__red_list_categories(token, url)
     upstream_df_ = transform__red_list_categories(data=json_)
 
-    transform_dq_check_ = check_data_quality.override(
+    transform_dq_check_ = check_data_quality_task.override(
         task_id="dq__transform__red_list_categories",
     )(
         upstream_result=upstream_df_, 
@@ -392,7 +350,7 @@ def iucn_load_red_list_categories_mapping():
     upstream_result_db_ = load__red_list_categories(upstream_result=upstream_df_)
     transform_dq_check_ >> upstream_result_db_
 
-    load_dq_check_ = check_data_quality.override(
+    load_dq_check_ = check_data_quality_task.override(
         task_id="dq__load__red_list_categories",
     )(
         upstream_result=upstream_result_db_, 
@@ -561,7 +519,7 @@ def iucn_load_threats__dict():
         ti = context["ti"]
 
         return {
-            "data": f'dict.{table_name}',
+            "db_table": f'dict.{table_name}',
             "metadata": {
                 'dag_id': context["dag"].dag_id,
                 "run_id": context["dag_run"].run_id,
@@ -580,7 +538,7 @@ def iucn_load_threats__dict():
     json_ = extract__threats(token, url)
     upstream_df_ = transform__threats(data=json_)
 
-    transform_dq_check_ = check_data_quality.override(
+    transform_dq_check_ = check_data_quality_task.override(
         task_id="dq__transform__threats",
     )(
         upstream_result=upstream_df_, 
@@ -626,7 +584,7 @@ def iucn_load_threats__dict():
     upstream_result_db_ = load__threats(upstream_result=upstream_df_)
     transform_dq_check_ >> upstream_result_db_
 
-    load_dq_check_ = check_data_quality.override(
+    load_dq_check_ = check_data_quality_task.override(
         task_id="dq__load__threats",
     )(
         upstream_result=upstream_result_db_, 
@@ -794,7 +752,7 @@ def iucn_load_stresses__dict():
         ti = context["ti"]
 
         return {
-            "data": f'dict.{table_name}',
+            "db_table": f'dict.{table_name}',
             "metadata": {
                 'dag_id': context["dag"].dag_id,
                 "run_id": context["dag_run"].run_id,
@@ -813,7 +771,7 @@ def iucn_load_stresses__dict():
     json_ = extract__stresses(token, url)
     upstream_df_ = transform__stresses(data=json_)
 
-    transform_dq_check_ = check_data_quality.override(
+    transform_dq_check_ = check_data_quality_task.override(
         task_id="dq__transform__stresses",
     )(
         upstream_result=upstream_df_, 
@@ -859,7 +817,7 @@ def iucn_load_stresses__dict():
     upstream_result_db_ = load__stresses(upstream_result=upstream_df_)
     transform_dq_check_ >> upstream_result_db_
 
-    load_dq_check_ = check_data_quality.override(
+    load_dq_check_ = check_data_quality_task.override(
         task_id="dq__load__stresses",
     )(
         upstream_result=upstream_result_db_, 
@@ -1079,7 +1037,7 @@ def iucn_load_habitat_system_mapping():
         ti = context["ti"]
 
         return {
-            "data": f'dict.{table_name}',
+            "db_table": f'dict.{table_name}',
             "metadata": {
                 'dag_id': context["dag"].dag_id,
                 "run_id": context["dag_run"].run_id,
@@ -1096,7 +1054,7 @@ def iucn_load_habitat_system_mapping():
     json_ = extract__habitats(token, url)
     upstream_df_ = transform__habitats(data=json_)
 
-    transform_dq_check_ = check_data_quality.override(
+    transform_dq_check_ = check_data_quality_task.override(
         task_id="dq__transform__habitats",
     )(
         upstream_result=upstream_df_, 
@@ -1157,7 +1115,7 @@ def iucn_load_habitat_system_mapping():
     upstream_result_db_ = load__habitats(upstream_result=upstream_df_)
     transform_dq_check_ >> upstream_result_db_
 
-    load_dq_check_ = check_data_quality.override(
+    load_dq_check_ = check_data_quality_task.override(
         task_id="dq__load__habitats",
     )(
         upstream_result=upstream_result_db_,

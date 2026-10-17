@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS datamart.threats__datamart
     `category_sorted`         Nullable(String),
     `timing`                  Nullable(String),
     `threat`                  String,
-    `system`               String,
+    `system`                  String,
     `habitat`                 Nullable(String),
     `CREATE_DTTM`             DateTime default now()
 );

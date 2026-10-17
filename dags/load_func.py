@@ -1,15 +1,25 @@
 from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
+from pathlib import Path
 
 import pandas as pd
 
-def load__assessments(client, input_dir, table_name='assessments'):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+from airflow.sdk import get_current_context, dag, task
+from airflow.providers.clickhousedb.hooks.clickhouse import ClickHouseHook
+
+from data_quality import check_data_quality
+hook = ClickHouseHook(clickhouse_conn_id="clickhouse")
+
+@task
+def load__assessments(input_dir, schema_name='detail', table_name='assessments'):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     df['assessment_date'] = pd.to_datetime(df['assessment_date'], utc=True)
 
-    # assessments_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    assessments_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # assessments_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    assessments_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id                    UInt64,
         assessment_date                  Nullable(dateTime),
         year_published                   UInt16,
@@ -30,26 +40,57 @@ def load__assessments(client, input_dir, table_name='assessments'):
         `CREATE_DTTM`                    DateTime default now()
     )
     PRIMARY KEY (assessment_id)"""
-    client.command(assessments_ddl)
+    with hook.get_client() as client:
+        client.command(assessments_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=list(df.columns),
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=list(df.columns),
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__taxonomy(client, input_dir, table_name='taxonomy'):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__taxonomy(input_dir, schema_name='detail', table_name='taxonomy'):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
 
-    # taxonomy_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    taxonomy_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # taxonomy_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    taxonomy_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         sis_taxon_id          UInt64,
         kingdom_name          Nullable(String),
         phylum_name           Nullable(String),
@@ -62,78 +103,171 @@ def load__taxonomy(client, input_dir, table_name='taxonomy'):
         `CREATE_DTTM`         DateTime default now()
     )
     PRIMARY KEY (scientific_name)"""
-    client.command(taxonomy_ddl)
+    with hook.get_client() as client:
+        client.command(taxonomy_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=list(df.columns),
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=list(df.columns),
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__conservation_actions_in_place(client, input_dir, table_name='conservation_actions_in_place'):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__conservation_actions_in_place(input_dir, schema_name='detail', table_name='conservation_actions_in_place'):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
 
-    # ca_in_place_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    ca_in_place_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # ca_in_place_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    ca_in_place_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id                 UInt64,
         conservation_action_name      Nullable(String),
         feature                       Nullable(String),
         value                         Nullable(String),
         `CREATE_DTTM`                 DateTime default now()
     )"""
-    client.command(ca_in_place_ddl)
+    with hook.get_client() as client:
+        client.command(ca_in_place_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=list(df.columns),
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=list(df.columns),
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__conservation_actions(client, input_dir, table_name="conservation_actions"):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__conservation_actions(input_dir, schema_name='detail', table_name="conservation_actions"):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
         
-    # ca_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    ca_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # ca_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    ca_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id   UInt64,
         code            String,
         description     String,
         `CREATE_DTTM`   DateTime default now()
     )
     PRIMARY KEY (assessment_id, description)"""
-    client.command(ca_ddl)
+    with hook.get_client() as client:
+        client.command(ca_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=df.columns,
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=df.columns,
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__locations(client, input_dir, table_name="locations"):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__locations(input_dir, schema_name='detail', table_name="locations"):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
 
-    # locations_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    locations_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # locations_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    locations_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
         origin           Nullable(String),
         presence         Nullable(String),
@@ -143,54 +277,116 @@ def load__locations(client, input_dir, table_name="locations"):
         `CREATE_DTTM`    DateTime default now()
     )
     PRIMARY KEY (assessment_id, country)"""
-    client.command(locations_ddl)
+    with hook.get_client() as client:
+        client.command(locations_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=df.columns,
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=df.columns,
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__habitats(client, input_dir, table_name='habitats'):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__habitats(input_dir, schema_name='detail', table_name='habitats'):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
 
-    # habitat_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    habitat_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # habitat_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    habitat_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
         habitat          String,
         code             String,
         `CREATE_DTTM`    DateTime default now()
     )
     PRIMARY KEY (assessment_id, habitat)"""
-    client.command(habitat_ddl)
+    with hook.get_client() as client:
+        client.command(habitat_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=list(df.columns),
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=list(df.columns),
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__use_and_trade(client, input_dir, table_name='use_and_trade'):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__use_and_trade(input_dir, schema_name='detail', table_name='use_and_trade'):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
 
     df[df.duplicated(subset=['assessment_id', 'use_and_trade'], keep=False)]
 
-    # uat_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    uat_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # uat_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    uat_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
         international    Nullable(Bool),
         national         Nullable(Bool),
@@ -201,31 +397,62 @@ def load__use_and_trade(client, input_dir, table_name='use_and_trade'):
         `CREATE_DTTM`    DateTime default now()
     )
     PRIMARY KEY (assessment_id, use_and_trade)"""
-    client.command(uat_ddl)
+    with hook.get_client() as client:
+        client.command(uat_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=list(df.columns),
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=list(df.columns),
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__threats(client, input_dir: str, table_name='threats'):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__threats(input_dir, schema_name='detail', table_name='threats'):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
-
-    levels = client.query_df('select code, threat_lvl1, threat_lvl2, threat_lvl3 from threats__dict')
+    with hook.get_client() as client:
+        levels = client.query_df('select code, threat_lvl1, threat_lvl2, threat_lvl3 from dict.threats__dict')
 
     df['timing'] = df['timing'].fillna('Unknown')
     df = pd.merge(left=df, right=levels, on=('code'), how='left')
 
-    # threats_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    threats_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # threats_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    threats_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
         timing           String,
         threat           Nullable(String),
@@ -236,30 +463,61 @@ def load__threats(client, input_dir: str, table_name='threats'):
         `CREATE_DTTM`    DateTime default now()
     )
     PRIMARY KEY (assessment_id, timing, code)"""
-    query_result = client.command(threats_ddl)
+    with hook.get_client() as client:
+        query_result = client.command(threats_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=list(df.columns),
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=list(df.columns),
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__stresses(client, input_dir, table_name='stresses'):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__stresses(input_dir, schema_name='detail', table_name='stresses'):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
-
-    levels = client.query_df('select code, stress_lvl1, stress_lvl2, stress_lvl3 from stresses__dict')
+    with hook.get_client() as client:
+        levels = client.query_df('select code, stress_lvl1, stress_lvl2, stress_lvl3 from dict.stresses__dict')
 
     df = pd.merge(left=df, right=levels, on=('code'), how='left')
 
-    # stresses_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    stresses_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # stresses_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    stresses_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
         stress           String,
         code             String,
@@ -269,71 +527,161 @@ def load__stresses(client, input_dir, table_name='stresses'):
         `CREATE_DTTM`    DateTime default now()
     )
     PRIMARY KEY (assessment_id, code)"""
-    query_result = client.command(stresses_ddl)
+    with hook.get_client() as client:
+        query_result = client.command(stresses_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=list(df.columns),
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=list(df.columns),
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__systems(client, input_dir, table_name='systems'):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__systems(input_dir, schema_name='detail', table_name='systems'):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
 
     df['code'] = df['code'].astype(str)
 
-    # systems_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    systems_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # systems_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    systems_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
         system           String,
         code             String,
         `CREATE_DTTM`    DateTime default now()
     )
     PRIMARY KEY (assessment_id, system)"""
-    query_result = client.command(systems_ddl)
+    with hook.get_client() as client:
+        query_result = client.command(systems_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=list(df.columns),
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=list(df.columns),
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 
-def load__scopes(client, input_dir, table_name='scopes'):
-    df = pd.read_parquet(input_dir / f'{table_name}_db.parquet')
+@task
+def load__scopes(input_dir, schema_name='detail', table_name='scopes'):
+    input_dir = Path(input_dir)
+    input_path = input_dir / f'{table_name}_db.parquet'
+    df = pd.read_parquet(input_path)
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
         
     df.drop_duplicates(inplace=True)
 
-    # scopes_ddl = f"""DROP TABLE IF EXISTS detail.{table_name}"""
-    scopes_ddl = f"""CREATE TABLE IF NOT EXISTS detail.{table_name} (
+    # scopes_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
+    scopes_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
         scope            String,
         code             String,
         `CREATE_DTTM`    DateTime default now()
     )
     PRIMARY KEY (assessment_id, scope)"""
-    query_result = client.command(scopes_ddl)
+    with hook.get_client() as client:
+        query_result = client.command(scopes_ddl)
 
-    # delete rows that have been added today
-    query_result = client.command(f'delete from detail.{table_name} where `CREATE_DTTM`::date = current_date')
-    logging.info('%s', query_result.summary)
+        # delete rows that have been added today
+        query_result = client.command(f'delete from {schema_name}.{table_name} where `CREATE_DTTM`::date = current_date')
+        logging.info('%s', query_result.summary)
 
-    client.insert_df(
-        table=table_name,
-        df=df,
-        column_names=list(df.columns),
+        client.insert_df(
+            table=f'{schema_name}.{table_name}',
+            df=df,
+            column_names=list(df.columns),
+        )
+
+    # ===================
+    # Data quality checks
+    # - CR: number of rows
+    # ===================
+    context = get_current_context()
+    ti = context["ti"]
+    dq_data = {
+        "input_dir": input_dir,
+        "metadata": {
+            'dag_id': context["dag"].dag_id,
+            "run_id": context["dag_run"].run_id,
+            "upstream_task_id": ti.task_id,
+            "upstream_started_at": ti.start_date,
+            "upstream_ended_at": datetime.now(),
+        },
+    }
+    dq_data.update({'db_table': f'{schema_name}.{table_name}'})
+    check_data_quality(
+        upstream_result=dq_data,
+        checks=[
+            {
+                'check_name': 'record_count',
+                'critical': True,
+            }
+        ]
     )
 

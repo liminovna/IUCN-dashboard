@@ -1,7 +1,7 @@
 import json
 import requests
 
-def get_assessment_list_by_year(year: list, token: str, url: str, page_n: int, country_code: str='RU') -> json: # AQ
+def get_assessment_list_by_year(year: list, token: str, url: str, page_n: int, country_code: str='AQ') -> json: # AQ
     """
     Collect lists of relevant assessments
 

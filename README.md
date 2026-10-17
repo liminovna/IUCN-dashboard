@@ -1,6 +1,6 @@
 # Russia’s Biodiversity: IUCN Red List Overview
 
-The following project explores IUCN Red List assessments published between 2020 and 2026 for species recorded in the Russian Federation, focusing on conservation status, population trends, threats, and recommended conservation actions. Here, we try to answers the folowing questions:
+The following project explores IUCN Red List assessments published between 2020 and 2026 for species recorded in the Russian Federation, focusing on conservation status, population trends, threats, and recommended conservation actions. Here, we try to answer the folowing questions:
 
 1. What is the current conservation status of species recorded in the Russian Federation?
 2. How have conservation statuses and population trends changed over time?
@@ -9,40 +9,40 @@ The following project explores IUCN Red List assessments published between 2020 
 ## Quick note on IUCN
 The International Union for Conservation of Nature’s (IUCN) Red List of Threatened Species is the world’s most comprehensive information source on the global conservation status of animal, fungi and plant species. 
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-  <div>
-    <p>It divides species into nine categories:</p> 
-    <ul>
-    <li>Extinct (EX) – There are no known living individuals</li>
-    <li>Extinct in the wild (EW) – Known only to survive in captivity, or as a naturalized population outside its historic range</li>
-    <li>Critically Endangered (CR) – Highest risk of extinction in the wild</li>
-    <li>Endangered (EN) – Higher risk of extinction in the wild</li>
-    <li>Vulnerable (VU) – High risk of extinction in the wild</li>
-    <li>Near Threatened (NT) – Likely to become endangered in the near future</li>
-    <li>Conservation Dependent (CD) – Low risk; is conserved to prevent being near threatened, certain events may lead it to being a higher risk level </li>
-    <li>Least concern (LC) – Very low risk; does not qualify for a higher risk category and not likely to be threatened in the near future. </li>    
-    <li>Widespread and abundant taxa are included in this category.</li>
-    <li>Data deficient (DD) – Not enough data to make an assessment of its risk of extinction</li>
-    <li>Not evaluated (NE) – Has not yet been evaluated against the criteria.</li>
-    </ul>
-  </div>
-  <div style="text-align: center;">
-    <p><img src="documentation/assets/asian_black_bear.png" alt="Screenshot from a Wikipedia article on an Asian black bear" width="200"/></p>
-    <p><i><a href="https://en.wikipedia.org/wiki/Asian_black_bear">Example</a> of a species given a conservation status by IUCN</i></p>
-  </div>
-</div>
+It divides species into nine categories: 
+
+- Extinct (EX) – There are no known living individuals
+- Extinct in the wild (EW) – Known only to survive in captivity, or as a naturalized population outside its historic range
+- Critically Endangered (CR) – Highest risk of extinction in the wild
+- Endangered (EN) – Higher risk of extinction in the wild
+- Vulnerable (VU) – High risk of extinction in the wild
+Near Threatened (NT) – Likely to become endangered in the near future
+- Conservation Dependent (CD) – Low risk; is conserved to prevent being near threatened, certain events may lead it to being a higher risk level
+- Least concern (LC) – Very low risk; does not qualify for a higher risk category and not likely to be threatened in the near future.
+- Widespread and abundant taxa are included in this category.
+- Data deficient (DD) – Not enough data to make an assessment of its risk of extinction
+- Not evaluated (NE) – Has not yet been evaluated against the criteria.
+ 
+<img src="documentation/assets/asian_black_bear.png" alt="Screenshot from a Wikipedia article on an Asian black bear" width="200"/>
+
+*[Example](https://en.wikipedia.org/wiki/Asian_black_bear) of a species assessed by the IUCN and assigned a conservation status*
 
 ## Data
 On September 29th 2026, the data encompassess 6,230 assessments published between year 2020 and 2026 on species recorded in Russia. The data was scraped from [IUCN Red List API v4](https://api.iucnredlist.org/).
 
 ## Skills and tools
-This os a pet project developed to showcase the following skills and tools:
-- Business Intelligence and Reporting: Apache Superset
-- Analytics and Insight delivery
-- SQL: Clickhouse
-- Data engineering and Data quality monitorng: Apache Airflow
+This is a pet project developed to showcase full analytical workflow from API ingestion, orchestration, data modeling, quality checks, warehouse design, dashboarding, and interpretation.
 
-The project also involved docker, git, html and css.
+Key skills and tools:
+
+| Tool | Skill |
+|------|-------|
+| Apache Airflow | Data engineering and Data quality monitorng |
+| Clickhouse | Data warehouse architecture and Data modeling |
+| Apache Superset| Business Intelligence and Reporting |
+| brain 🧠 | Analytics and Insight delivery|
+
+The project also involved docker, git, HTML and CSS.
 
 ## Insights
 **Q1. What is the current conservation status of species recorded in the Russian Federation?**
@@ -59,9 +59,7 @@ In addition, 10% of species are classified as Data Deficient or Not Applicable, 
 
 The number of assessments carried out (not published!) each year has been uneven since 2018. The largest peaks occurred in 2020 (approximately 1,150 assessments) and 2023–2024 (approximately 3,740 assessments), while other years recorded fewer than 500 assessments.
 
-In years with a high volume of assessments, the proportion of assessments resulting in a threatened category or a declining population trend tends to be lower. Conversely, the highest proportions of threatened statuses and declining trends occur in years with relatively few assessments, which suggests an inverse relationship between assessment volume and the share of “unfavourable” outcomes.
-
-This pattern should be interpreted cautiously, since it may reflect changes in the mix of species assessed, rather than an actual improvement or deterioration in conservation status.
+In years with a high volume of assessments, the proportion of assessments resulting in a threatened category or a declining population trend tends to be lower. Conversely, the highest proportions of threatened statuses and declining trends occur in years with relatively few assessments. While there seems to be an inverse relationship between assessment volume and the share of “unfavourable” outcomes, this likely reflects differences in the species assessed rather than an actual improvement in conservation status.
 
 **Q3. What are the most common threats affecting species with declining populations, and which conservation actions can help most?**
 
@@ -95,6 +93,18 @@ Among threatened species, human-related threats are the most common, and habitat
 - add info on transitions between statuses (requires more data)
 - add more detailed geographical ranges
 - expand time range of assessments 
+- add scope, severity, timing for threats
+- check for corrected assessments
+- update latest flag when new assessments are added
+- add more data quality checks
 
 # Sources
 IUCN 2026. IUCN Red List of Threatened Species. Version 2026-1 <www.iucnredlist.org> 
+https://www.iucnredlist.org/assessment/supporting-information
+https://gist.github.com/rxaviers/7360908
+
+# Other great naturalistic resources
+- https://www.inaturalist.org/taxa/891696-Pica-pica
+- https://www.biodiversitylibrary.org/name/Pica%20pica
+- https://explorer.natureserve.org/search?sn=Pica%20pica
+- https://www.gbif.org/search?q=Pica%20pica

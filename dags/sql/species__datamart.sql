@@ -1,4 +1,4 @@
--- increment
+-- replace
 CREATE TABLE IF NOT EXISTS datamart.species__datamart
 (
     `scientific_name`              String,
@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS datamart.species__datamart
     `CREATE_DTTM`                  DateTime default now()
 );
 
+TRUNCATE TABLE datamart.species__datamart;
+
 INSERT INTO datamart.species__datamart (* EXCEPT(`CREATE_DTTM`))
 WITH latest_assessments AS
 (
@@ -45,9 +47,9 @@ WITH latest_assessments AS
         population_size,
         red_list_category,
         red_list_category_code
-    FROM detail.assessments
+    FROM detail.assessments a
     WHERE latest = 1
-    AND `CREATE_DTTM` >= (select max(`CREATE_DTTM`) from datamart.species__datamart)
+    AND not exists (select 1 from datamart.overview__datamart d where a.assessment_id = d.assessment_id)
 ),
 country_arrays AS
 (
@@ -77,8 +79,9 @@ habitat_arrays AS
 (
     SELECT
         assessment_id,
-        groupUniqArray(habitat__lvl1) AS habitats
-    FROM detail.habitats
+        groupUniqArray(habitat_lvl1) AS habitats
+    FROM detail.habitats ha
+    left join dict.habitat_system_mapping m on ha.code = m.habitat_code
     GROUP BY assessment_id
 ),
 threat_arrays AS
@@ -104,7 +107,7 @@ action_arrays AS
         assessment_id,
         groupUniqArray(description) AS conservation_actions
     FROM detail.conservation_actions
-    WHERE not (code ilike \'5_4%\' or code ilike \'5_1%\')
+    WHERE not (code ilike '5_4%' or code ilike '5_1%')
     GROUP BY assessment_id
 )
 SELECT

@@ -1,17 +1,13 @@
 from datetime import datetime
-import json
 import os
 from pathlib import Path
-from typing_extensions import Literal
+
+from data_quality import check_data_quality
 
 import pandas as pd
-import numpy as np
 
-from airflow.decorators import dag, task
-from airflow.exceptions import AirflowSkipException, AirflowFailException
-from airflow.models import Param
-
-import clickhouse_connect as cc
+from airflow.sdk import get_current_context, dag, task
+from airflow.providers.clickhousedb.hooks.clickhouse import ClickHouseHook
 
 # =====================================
 # Import credentials
@@ -22,12 +18,11 @@ load_dotenv()
 token = os.environ.get('iucn_token')
 url = os.environ.get('iucn_api_url')
 
-host = os.environ.get('clickhouse_server')
-username = os.environ.get('clickhouse_username')
-password = os.environ.get('clickhouse_password')
-port = os.environ.get('clickhouse_port')
+hook = ClickHouseHook(clickhouse_conn_id="clickhouse")
 
-# logging
+# =====================================
+# Initialize logger
+# =====================================
 import logging
 logger = logging.getLogger(__name__)
 
@@ -62,14 +57,13 @@ DAG runs SQL queries and updates datamarts.
 )
 def iucn_update__datamarts():
     @task
-    def update_table(host: str, port: str, username: str, password: str, sql_path: list):
+    def update_datamart__overview(sql_path: list):
         """
         Create datamart if it does not exist and run sql script from sql/*.sql
-
-        TODO: integrate clickhouse provider
         """
+        table_name = 'datamart.overview__datamart'
         sql_commands = Path(*sql_path).read_text(encoding="utf-8")
-        with cc.get_client(host=host, port=port, username=username, password=password) as client:
+        with hook.get_client() as client:
             statements = split_sql_statements(sql_commands)
 
             for statement in statements:
@@ -80,68 +74,403 @@ def iucn_update__datamarts():
                 query_result = client.command(statement)
                 logger.info('%s', query_result.summary)
 
+            # ===============================
+            # Data quality check inside the database
+            # - CR: table not empty
+            # - CR: completeness on assessment_id
+            # - CR: completeness on scientific_name
+            # - CR: completeness on kingdom_name
+            # - CR: completeness on population_trend
+            # - CR: completeness on red_list_category
+            # - CR: completeness on red_list_category_code
+            # - CR: completeness on system
+            # ===============================
+            context = get_current_context()
+            ti = context["ti"]
+
+            upstream_result = {
+                "db_table": table_name,
+                "metadata": {
+                    'dag_id': context["dag"].dag_id,
+                    "run_id": context["dag_run"].run_id,
+                    "upstream_task_id": ti.task_id,
+                    "upstream_started_at": ti.start_date,
+                    "upstream_ended_at": datetime.now(),
+                },
+            }
+
+            check_data_quality(
+                upstream_result=upstream_result,
+                checks=[
+                    {
+                        'check_name': 'record_count',
+                        'critical': True,
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'assessment_id'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'kingdom_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'scientific_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'population_trend'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'red_list_category'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'red_list_category_code'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'system'
+                    }
+                ] 
+            )
+
     @task
-    def check_data_quality(data: json, params):
+    def update_datamart__countries(sql_path: list):
         """
-        TODO: Run data quality checks and write to data_quality.main
-
-        columns:
-            - airflow__run_id: int
-            - airflow__run_type: string
-            - airflow__task_id: int
-            - airflow__dag_id: int
-            - airflow__start_date: datetime
-            - airflow__end_date: datetime
-            - airflow__status string
-
-            - details: json
-                - uniqueness
-                - completeness
-                - unexpected values (?)
-                - referencial integrity
-                - freshness (last update datetime)
+        Create datamart if it does not exist and run sql script from sql/*.sql
         """
-        raise NotImplemented
+        table_name = 'datamart.countries__datamart'
+        sql_commands = Path(*sql_path).read_text(encoding="utf-8")
+        with hook.get_client() as client:
+            statements = split_sql_statements(sql_commands)
 
-    # sequence
-    update_table.override(
-        task_id="load_overview__datamart",
-    )(
-        host=host, port=port, username=username, password=password,
-        sql_path=[SQL_DIR, 'overview__datamart.sql']
-    )
-    # check_data_quality
+            for statement in statements:
+                if not statement.strip():
+                    continue
 
-    update_table.override(
-        task_id="load_countries__datamart",
-    )(
-        host=host, port=port, username=username, password=password,
-        sql_path=[SQL_DIR, 'countries__datamart.sql']
-    )
-    # check_data_quality
+                # execute
+                query_result = client.command(statement)
+                logger.info('%s', query_result.summary)
 
-    update_table.override(
-        task_id="load_species__datamart",
-    )(
-        host=host, port=port, username=username, password=password,
-        sql_path=[SQL_DIR, 'species__datamart.sql']
-    )
-    # check_data_quality
+            # ===============================
+            # Data quality check inside the database
+            # - CR: table not empty
+            # - CR: completeness on assessment_id
+            # - CR: completeness on code
+            # - CR: completeness on country
+            # - CR: uniqueness on (assessment_id, code)
+            # ===============================
+            context = get_current_context()
+            ti = context["ti"]
 
-    update_table.override(
-        task_id="load_changes__datamart",
-    )(
-        host=host, port=port, username=username, password=password,
-        sql_path=[SQL_DIR, 'changes__datamart.sql']
-    )
-    # check_data_quality
+            upstream_result = {
+                "db_table": table_name,
+                "metadata": {
+                    'dag_id': context["dag"].dag_id,
+                    "run_id": context["dag_run"].run_id,
+                    "upstream_task_id": ti.task_id,
+                    "upstream_started_at": ti.start_date,
+                    "upstream_ended_at": datetime.now(),
+                },
+            }
 
-    update_table.override(
-        task_id="load_threats__datamart",
-    )(
-        host=host, port=port, username=username, password=password,
-        sql_path=[SQL_DIR, 'threats__datamart.sql']
-    )
-    # check_data_quality
+            check_data_quality(
+                upstream_result=upstream_result,
+                checks=[
+                    {
+                        'check_name': 'record_count',
+                        'critical': True,
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'assessment_id'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'code'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'country'
+                    },
+                    {
+                        'check_name': 'uniqueness',
+                        'critical': True,
+                        'check_subset': ('assessment_id', 'code')
+                    }
+                ] 
+            )
+
+    @task
+    def update_datamart__species(sql_path: list):
+        """
+        Create datamart if it does not exist and run sql script from sql/*.sql
+        """
+        table_name = 'datamart.species__datamart'
+        sql_commands = Path(*sql_path).read_text(encoding="utf-8")
+        with hook.get_client() as client:
+            statements = split_sql_statements(sql_commands)
+
+            for statement in statements:
+                if not statement.strip():
+                    continue
+
+                # execute
+                query_result = client.command(statement)
+                logger.info('%s', query_result.summary)
+
+            # ===============================
+            # Data quality check inside the database
+            # - CR: table not empty
+            # - CR: completeness on assessment_id
+            # - CR: uniqueness on assessment_id
+            # - CR: completeness on scientific_name
+            # - CR: completeness on kingdom_name
+            # - CR: completeness on phylum_name
+            # - CR: completeness on class_name
+            # - CR: completeness on order_name
+            # - CR: completeness on family_name
+            # - CR: completeness on genus_name
+            # - CR: completeness on species_name
+            # - CR: completeness on population_trend
+            # - CR: completeness on red_list_category
+            # - CR: completeness on red_list_category_code
+            # - completeness on url
+            # ===============================
+            context = get_current_context()
+            ti = context["ti"]
+
+            upstream_result = {
+                "db_table": table_name,
+                "metadata": {
+                    'dag_id': context["dag"].dag_id,
+                    "run_id": context["dag_run"].run_id,
+                    "upstream_task_id": ti.task_id,
+                    "upstream_started_at": ti.start_date,
+                    "upstream_ended_at": datetime.now(),
+                },
+            }
+
+            check_data_quality(
+                upstream_result=upstream_result,
+                checks=[
+                    {
+                        'check_name': 'record_count',
+                        'critical': True,
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'assessment_id'
+                    },
+                    {
+                        'check_name': 'uniqueness',
+                        'critical': True,
+                        'check_subset': 'assessment_id'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'kingdom_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'phylum_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'class_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'order_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'family_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'genus_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'species_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'scientific_name'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'population_trend'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'red_list_category'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'red_list_category_code'
+                    }
+                ] 
+            )
+
+    @task
+    def update_datamart__changes(sql_path: list):
+        """
+        Create datamart if it does not exist and run sql script from sql/*.sql
+        """
+        table_name = 'datamart.changes__datamart'
+        sql_commands = Path(*sql_path).read_text(encoding="utf-8")
+        with hook.get_client() as client:
+            statements = split_sql_statements(sql_commands)
+
+            for statement in statements:
+                if not statement.strip():
+                    continue
+
+                # execute
+                query_result = client.command(statement)
+                logger.info('%s', query_result.summary)
+
+            # ===============================
+            # Data quality check inside the database
+            # - CR: table not empty
+            # - CR: completeness on assessment_id
+            # - CR: completeness on n_assessments
+            # - CR: completeness on assessment_rank
+            # ===============================
+            context = get_current_context()
+            ti = context["ti"]
+
+            upstream_result = {
+                "db_table": table_name,
+                "metadata": {
+                    'dag_id': context["dag"].dag_id,
+                    "run_id": context["dag_run"].run_id,
+                    "upstream_task_id": ti.task_id,
+                    "upstream_started_at": ti.start_date,
+                    "upstream_ended_at": datetime.now(),
+                },
+            }
+
+            check_data_quality(
+                upstream_result=upstream_result,
+                checks=[
+                    {
+                        'check_name': 'record_count',
+                        'critical': True,
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'assessment_id'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'n_assessments'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'assessment_rank'
+                    }
+                ] 
+            )
+
+    @task
+    def update_datamart__threats(sql_path: list):
+        """
+        Create datamart if it does not exist and run sql script from sql/*.sql
+        """
+        table_name = 'datamart.threats__datamart'
+        sql_commands = Path(*sql_path).read_text(encoding="utf-8")
+        with hook.get_client() as client:
+            statements = split_sql_statements(sql_commands)
+
+            for statement in statements:
+                if not statement.strip():
+                    continue
+
+                # execute
+                query_result = client.command(statement)
+                logger.info('%s', query_result.summary)
+
+            # ===============================
+            # Data quality check inside the database
+            # - CR: table not empty
+            # - CR: completeness on assessment_id
+            # - CR: completeness on threat
+            # - CR: uniqueness on (assessment_id, threat)
+            # ===============================
+            context = get_current_context()
+            ti = context["ti"]
+
+            upstream_result = {
+                "db_table": table_name,
+                "metadata": {
+                    'dag_id': context["dag"].dag_id,
+                    "run_id": context["dag_run"].run_id,
+                    "upstream_task_id": ti.task_id,
+                    "upstream_started_at": ti.start_date,
+                    "upstream_ended_at": datetime.now(),
+                },
+            }
+
+            check_data_quality(
+                upstream_result=upstream_result,
+                checks=[
+                    {
+                        'check_name': 'record_count',
+                        'critical': True,
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'assessment_id'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
+                        'check_subset': 'threat'
+                    },
+                    {
+                        'check_name': 'uniqueness',
+                        'critical': True,
+                        'check_subset': ('assessment_id', 'threat', 'habitat')
+                    }
+                ] 
+            )
+
+    update_datamart__overview(sql_path=[SQL_DIR, 'overview__datamart.sql'])
+    update_datamart__countries(sql_path=[SQL_DIR, 'countries__datamart.sql'])
+    update_datamart__species(sql_path=[SQL_DIR, 'species__datamart.sql'])
+    update_datamart__changes(sql_path=[SQL_DIR, 'changes__datamart.sql'])
+    update_datamart__threats(sql_path=[SQL_DIR, 'threats__datamart.sql'])
 
 iucn_update__datamarts()

@@ -1,4 +1,4 @@
--- increment
+-- replace
 CREATE TABLE IF NOT EXISTS datamart.countries__datamart
 (
     `assessment_id` UInt64,
@@ -8,15 +8,17 @@ CREATE TABLE IF NOT EXISTS datamart.countries__datamart
 )
 ;
 
+TRUNCATE TABLE datamart.countries__datamart;
+
 --EXPLAIN ANALYZE
 INSERT INTO datamart.countries__datamart (* EXCEPT(`CREATE_DTTM`))
 WITH latest_assessments AS
 (
     SELECT
         assessment_id
-    FROM detail.assessments
+    FROM detail.assessments a
     WHERE latest = 1
-    AND `CREATE_DTTM` >= (select max(`CREATE_DTTM`) from datamart.countries__datamart)
+    AND not exists (select 1 from datamart.overview__datamart d where a.assessment_id = d.assessment_id)
 )
 select 
     l.assessment_id as assessment_id, 

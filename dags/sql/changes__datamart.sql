@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS datamart.changes__datamart (
 TRUNCATE TABLE datamart.changes__datamart;
 
 INSERT INTO datamart.changes__datamart (* EXCEPT(`CREATE_DTTM`))
-with assessments_counts as (
-    select scientific_name, kingdom, count() as n_assessments
+WITH assessments_counts as (
+    select t.scientific_name as scientific_name, t.kingdom_name as kingdom_name, count() as n_assessments
     from detail.assessments a
     left join detail.taxonomy t using scientific_name
     group by 1,2
@@ -64,7 +64,7 @@ a.url,
 a.possibly_extinct,
 a.possibly_extinct_in_the_wild,
 a.scientific_name as scientific_name,
-a.kingdom,
+c.kingdom_name as kingdom,
 a.population_trend,
 a.population_trend_code,
 a.red_list_category_version,
