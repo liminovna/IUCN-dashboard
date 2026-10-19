@@ -8,6 +8,8 @@ The following project explores IUCN Red List assessments published between 2020 
 
 <img src="documentation/superset_assets/screen_recording.gif" alt="Screen recording"/></p>
 
+See screenshots [here](documentation/superset_assets/screenshots)
+
 ## Quick note on IUCN
 The International Union for Conservation of Nature’s (IUCN) Red List of Threatened Species is the world’s most comprehensive information source on the global conservation status of animal, fungi and plant species. 
 
