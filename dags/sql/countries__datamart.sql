@@ -19,5 +19,4 @@ select
     l.code 
 from detail.assessments a 
 left join detail.locations l using assessment_id
-WHERE latest = 1
-AND not exists (select 1 from datamart.overview__datamart d where a.assessment_id = d.assessment_id);
+WHERE latest = 1;

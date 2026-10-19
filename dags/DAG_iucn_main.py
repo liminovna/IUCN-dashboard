@@ -163,28 +163,28 @@ def iucn_main():
         trigger__red_list_categories_mapping = TriggerDagRunOperator(
             task_id="trigger__red_list_categories_mapping",
             trigger_dag_id="iucn_load_red_list_categories_mapping",
-            wait_for_completion=True,
+            # wait_for_completion=True,
             deferrable=True, # When it has nothing to do but wait, an operator can suspend itself and free up the worker for other processes by deferring.
         )
 
         trigger__habitat_system_mapping = TriggerDagRunOperator(
             task_id="trigger__habitat_system_mapping",
             trigger_dag_id="iucn_load_habitat_system_mapping",
-            wait_for_completion=True,
+            # wait_for_completion=True,
             deferrable=True,
         )
 
         trigger__threats__dict = TriggerDagRunOperator(
             task_id="trigger__threats__dict",
             trigger_dag_id="iucn_load_threats__dict",
-            wait_for_completion=True,
+            # wait_for_completion=True,
             deferrable=True,
         )
 
         trigger__stresses__dict = TriggerDagRunOperator(
             task_id="trigger__stresses__dict",
             trigger_dag_id="iucn_load_stresses__dict",
-            wait_for_completion=True,
+            # wait_for_completion=True,
             deferrable=True,
         )
 
@@ -596,9 +596,7 @@ def iucn_main():
     # if_start >> dq_table >> ref_tables >> raw_assessments_countries_result
     # parsed >> normalized >> loaded
 
-    parsed = parse__raw_data(input_dir=DATA_RAW_ASSESSMENTS, output_dir=DATA_STAGE)
-    normalized = normalize_data(input_path=parsed, output_dir=DATA_DETAIL)
-    loaded = load_to_db(input_dir=normalized)
+    loaded = load_to_db(input_dir=DATA_DETAIL)
     
-    parsed >> normalized >> loaded
+    ref_tables >> loaded
 iucn_main()

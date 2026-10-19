@@ -265,6 +265,9 @@ def iucn_load_red_list_categories_mapping():
         df = upstream_result['data']
         table_name = params['table_name']
 
+        text_cols = df.select_dtypes(str).columns
+        df[text_cols] = df[text_cols].fillna('empty')
+
         with hook.get_client() as client:
             # create if necessary and truncate
             ddl = f"""CREATE TABLE IF NOT EXISTS dict.{table_name} (

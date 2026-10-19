@@ -18,6 +18,9 @@ def load__assessments(input_dir, schema_name='detail', table_name='assessments')
     df = pd.read_parquet(input_path)
     df['assessment_date'] = pd.to_datetime(df['assessment_date'], utc=True)
 
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     # assessments_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     assessments_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id                    UInt64,
@@ -27,7 +30,7 @@ def load__assessments(input_dir, schema_name='detail', table_name='assessments')
         possibly_extinct                 Bool,
         possibly_extinct_in_the_wild     Bool,
         sis_taxon_id                     UInt64,
-        criteria                         String,
+        criteria                         LowCardinality(String) default 'empty',
         url                              String,
         sis_id                           UInt64,
         scientific_name                  String,
@@ -89,6 +92,9 @@ def load__taxonomy(input_dir, schema_name='detail', table_name='taxonomy'):
         logging.warning('Empty dataframe %s', table_name)
         return
 
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     # taxonomy_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     taxonomy_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         sis_taxon_id          UInt64,
@@ -148,6 +154,10 @@ def load__conservation_actions_in_place(input_dir, schema_name='detail', table_n
     input_dir = Path(input_dir)
     input_path = input_dir / f'{table_name}_db.parquet'
     df = pd.read_parquet(input_path)
+
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
@@ -206,6 +216,10 @@ def load__conservation_actions(input_dir, schema_name='detail', table_name="cons
     input_dir = Path(input_dir)
     input_path = input_dir / f'{table_name}_db.parquet'
     df = pd.read_parquet(input_path)
+
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
@@ -263,6 +277,10 @@ def load__locations(input_dir, schema_name='detail', table_name="locations"):
     input_dir = Path(input_dir)
     input_path = input_dir / f'{table_name}_db.parquet'
     df = pd.read_parquet(input_path)
+
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
@@ -323,6 +341,10 @@ def load__habitats(input_dir, schema_name='detail', table_name='habitats'):
     input_dir = Path(input_dir)
     input_path = input_dir / f'{table_name}_db.parquet'
     df = pd.read_parquet(input_path)
+
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
@@ -380,6 +402,10 @@ def load__use_and_trade(input_dir, schema_name='detail', table_name='use_and_tra
     input_dir = Path(input_dir)
     input_path = input_dir / f'{table_name}_db.parquet'
     df = pd.read_parquet(input_path)
+
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
@@ -443,14 +469,18 @@ def load__threats(input_dir, schema_name='detail', table_name='threats'):
     input_dir = Path(input_dir)
     input_path = input_dir / f'{table_name}_db.parquet'
     df = pd.read_parquet(input_path)
+
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
-    with hook.get_client() as client:
-        levels = client.query_df('select code, threat_lvl1, threat_lvl2, threat_lvl3 from dict.threats__dict')
+    # with hook.get_client() as client:
+        # levels = client.query_df('select code, threat_lvl1, threat_lvl2, threat_lvl3 from dict.threats__dict')
 
     df['timing'] = df['timing'].fillna('Unknown')
-    df = pd.merge(left=df, right=levels, on=('code'), how='left')
+    # df = pd.merge(left=df, right=levels, on=('code'), how='left')
 
     # threats_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     threats_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
@@ -458,12 +488,9 @@ def load__threats(input_dir, schema_name='detail', table_name='threats'):
         timing           String,
         threat           LowCardinality(String) default 'empty',
         code             String,
-        threat_lvl1      LowCardinality(String) default 'empty',
-        threat_lvl2      LowCardinality(String) default 'empty',
-        threat_lvl3      LowCardinality(String) default 'empty',
         `CREATE_DTTM`    DateTime default now()
     )
-    ORDER BY (code, threat_lvl1, threat, assessment_id)"""
+    ORDER BY (code, threat, assessment_id)"""
     with hook.get_client() as client:
         query_result = client.command(threats_ddl)
 
@@ -509,25 +536,26 @@ def load__stresses(input_dir, schema_name='detail', table_name='stresses'):
     input_dir = Path(input_dir)
     input_path = input_dir / f'{table_name}_db.parquet'
     df = pd.read_parquet(input_path)
+
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
-    with hook.get_client() as client:
-        levels = client.query_df('select code, stress_lvl1, stress_lvl2, stress_lvl3 from dict.stresses__dict')
+    # with hook.get_client() as client:
+    #     levels = client.query_df('select code, stress_lvl1, stress_lvl2, stress_lvl3 from dict.stresses__dict')
 
-    df = pd.merge(left=df, right=levels, on=('code'), how='left')
+    # df = pd.merge(left=df, right=levels, on=('code'), how='left')
 
     # stresses_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     stresses_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
         stress           LowCardinality(String) default 'empty',
         code             LowCardinality(String) default 'empty',
-        stress_lvl1      LowCardinality(String) default 'empty',
-        stress_lvl2      LowCardinality(String) default 'empty',
-        stress_lvl3      LowCardinality(String) default 'empty',
         `CREATE_DTTM`    DateTime default now()
     )
-    ORDER BY (stress_lvl1, stress, code, assessment_id)"""
+    ORDER BY (stress, code, assessment_id)"""
     with hook.get_client() as client:
         query_result = client.command(stresses_ddl)
 
@@ -573,6 +601,10 @@ def load__systems(input_dir, schema_name='detail', table_name='systems'):
     input_dir = Path(input_dir)
     input_path = input_dir / f'{table_name}_db.parquet'
     df = pd.read_parquet(input_path)
+
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
@@ -632,6 +664,10 @@ def load__scopes(input_dir, schema_name='detail', table_name='scopes'):
     input_dir = Path(input_dir)
     input_path = input_dir / f'{table_name}_db.parquet'
     df = pd.read_parquet(input_path)
+
+    text_cols = df.select_dtypes(str).columns
+    df[text_cols] = df[text_cols].fillna('empty')
+    
     if df.empty:
         logging.warning('Empty dataframe %s', table_name)
         return
