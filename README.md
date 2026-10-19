@@ -2,9 +2,11 @@
 
 The following project explores IUCN Red List assessments published between 2020 and 2026 for species recorded in the Russian Federation, focusing on conservation status, population trends, threats, and recommended conservation actions. Here, we try to answer the folowing questions:
 
-1. What is the current conservation status of species recorded in the Russian Federation?
+1. What is the current conservation status of the assessed species recorded in the Russian Federation?
 2. How have conservation statuses and population trends changed over time?
-3. What are the most common threats affecting species with declining populations, and which conservation actions can help most?
+3. What are the most common threats affecting the assessed species with declining populations, and which conservation actions can help most?
+
+<img src="documentation/superset_assets/screen_recording.gif" alt="Screen recording"/></p>
 
 ## Quick note on IUCN
 The International Union for Conservation of Nature’s (IUCN) Red List of Threatened Species is the world’s most comprehensive information source on the global conservation status of animal, fungi and plant species. 
@@ -22,10 +24,11 @@ Near Threatened (NT) – Likely to become endangered in the near future
 - Widespread and abundant taxa are included in this category.
 - Data deficient (DD) – Not enough data to make an assessment of its risk of extinction
 - Not evaluated (NE) – Has not yet been evaluated against the criteria.
- 
-<img src="documentation/assets/asian_black_bear.png" alt="Screenshot from a Wikipedia article on an Asian black bear" width="200"/>
+ <p align="center">
+<img src="documentation/assets/asian_black_bear.png" alt="Screenshot from a Wikipedia article on an Asian black bear" width="200"/></p>
 
 *[Example](https://en.wikipedia.org/wiki/Asian_black_bear) of a species assessed by the IUCN and assigned a conservation status*
+
 
 ## Data
 On September 29th 2026, the data encompassess 6,230 assessments published between year 2020 and 2026 on species recorded in Russia. The data was scraped from [IUCN Red List API v4](https://api.iucnredlist.org/).
@@ -37,10 +40,10 @@ Key skills and tools:
 
 | Tool | Skill |
 |------|-------|
-| Apache Airflow | Data engineering and Data quality monitorng |
-| Clickhouse | Data warehouse architecture and Data modeling |
-| Apache Superset| Business Intelligence and Reporting |
-| brain 🧠 | Analytics and Insight delivery|
+| Apache Airflow | Data engineering and data quality monitoring |
+| Clickhouse | Data warehouse architecture, data modeling, query optimization |
+| Apache Superset| Business Intelligence and reporting |
+| brain 🧠 | Analytics and insight delivery|
 
 The project also involved docker, git, HTML and CSS.
 
@@ -77,34 +80,39 @@ IUCN assessment coverage for species recorded in Russia is dominated by animals,
 
 However, the annual distribution of assessments is highly uneven, with peaks in 2020 and 2023–2024. These peaks coincide with lower proportions of threatened species, which may reflect differences in the species assessed rather than genuine changes in extinction risk.
 
-Among threatened species, human-related threats are the most common, and habitat protection appears to be the most broadly recommended conservation action. While it may not eliminate all risks, habitat protection is likely to be one of the most effective measures to help prevent further decline.
-
-## Screenshots
+Among threatened species, human-related threats are the most common, and **habitat protection** appears to be the most broadly recommended conservation action. While it may not eliminate all risks, habitat protection is likely to be one of the most effective measures to help prevent further decline of the assessed species.
 
 ## Project structure
 
+The project consists of three main components:
+
+- [ETL pipeline in Airflow](link)
+- [Data warehouse in ClickHouse](link)
+- [Interactive dashboard in Apache Superset](link)
+
+For more detailed information about each component, see the corresponding documentation.
+
 ## Limitations
-- The data only encompasses 7 years of research due to resource limitations
-- IUCN coverage is not random, and we cannot judge about the general conservation status by assessments
-- A more extensive analysis requires more data on [Green List statuses](https://www.iucnredlist.org/about/green-status-species)
+
+- The analysis covers only seven years of IUCN assessments due to resource constraints, while the IUCN Red List contains data spanning a much longer period.
+- IUCN assessment coverage is not random. The results should therefore not be interpreted as a representative measure of the overall conservation status of species in the region.
+- A more comprehensive analysis would benefit from additional data on [IUCN Green Status](https://www.iucnredlist.org/about/green-status-species).
 
 ## Backlog
-- add full-text analysis of threats, trade and use, conservation actions
-- add info on transitions between statuses (requires more data)
-- add more detailed geographical ranges
-- expand time range of assessments 
-- add scope, severity, timing for threats
-- check for corrected assessments
-- update latest flag when new assessments are added
-- add more data quality checks
+
+The project could be further developed in several areas, including data exploration, visualization, and architecture:
+
+- Add full-text analysis of threats, trade and use, and conservation actions.
+- Add information on transitions between Red List categories (requires additional data).
+- Add more detailed geographic range information.
+- Extend the time range of assessments.
+- Explore threat scope, severity, and timing.
+- Identify and handle corrected assessments.
+- Update the latest-assessment flag when new assessments are added.
+- Add additional data-quality checks.
 
 # Sources
-IUCN 2026. IUCN Red List of Threatened Species. Version 2026-1 <www.iucnredlist.org> 
+- IUCN 2026. IUCN Red List of Threatened Species. Version 2026-1 <www.iucnredlist.org> 
 https://www.iucnredlist.org/assessment/supporting-information
 https://gist.github.com/rxaviers/7360908
-
-# Other great naturalistic resources
-- https://www.inaturalist.org/taxa/891696-Pica-pica
-- https://www.biodiversitylibrary.org/name/Pica%20pica
-- https://explorer.natureserve.org/search?sn=Pica%20pica
-- https://www.gbif.org/search?q=Pica%20pica
+- Clickhouse documentation pages on query optimization: https://clickhouse.com/docs/guides/clickhouse/performance-and-monitoring/query-optimization
