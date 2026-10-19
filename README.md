@@ -84,15 +84,39 @@ However, the annual distribution of assessments is highly uneven, with peaks in 
 
 Among threatened species, human-related threats are the most common, and **habitat protection** appears to be the most broadly recommended conservation action. While it may not eliminate all risks, habitat protection is likely to be one of the most effective measures to help prevent further decline of the assessed species.
 
-## Project structure
+## Implementation highlights
 
-The project consists of three main components:
+The following block summarizes the key components of the project and the main implementation details for each one.
 
-- [ETL pipeline in Airflow](link)
-- [Data warehouse in ClickHouse](link)
-- [Interactive dashboard in Apache Superset](documentation/superset_readme.md/)
+### ETL pipeline in Airflow  
+[View documentation](link)
 
-For more detailed information about each component's implementation, see the corresponding documentation.
+**Key features**
+
+- DAG parameters
+- Task groups, exception handling, and cross-DAG triggers
+- Data-quality checks
+
+### Data warehouse in ClickHouse  
+[View documentation](link)
+
+**Key features**
+
+- Separation of data layers
+- Indexing for query performance
+
+### Interactive dashboard in Apache Superset  
+[View documentation](documentation/superset_readme.md)
+
+**Key features**
+
+- Color coding and custom styling with CSS
+- Clickable links implemented with HTML
+- Emojis in tables to provide visual cues
+- Jinja templates for complex filtering
+- Cross-filtering between charts
+
+For more detailed information about each component’s implementation, see the corresponding documentation.
 
 ## Limitations
 
