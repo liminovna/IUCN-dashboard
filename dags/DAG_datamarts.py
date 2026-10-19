@@ -139,6 +139,11 @@ def iucn_update__datamarts():
                     {
                         'check_name': 'completeness',
                         'critical': True,
+                        'check_subset': 'category_sorted'
+                    },
+                    {
+                        'check_name': 'completeness',
+                        'critical': True,
                         'check_subset': 'system'
                     }
                 ] 

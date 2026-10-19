@@ -23,23 +23,23 @@ def load__assessments(input_dir, schema_name='detail', table_name='assessments')
         assessment_id                    UInt64,
         assessment_date                  Nullable(dateTime),
         year_published                   UInt16,
-        latest                           Nullable(Bool),
-        possibly_extinct                 Nullable(Bool),
-        possibly_extinct_in_the_wild     Nullable(Bool),
-        sis_taxon_id                     Nullable(UInt64),
-        criteria                         Nullable(String),
-        url                              Nullable(String),
-        sis_id                           Nullable(UInt64),
+        latest                           Bool,
+        possibly_extinct                 Bool,
+        possibly_extinct_in_the_wild     Bool,
+        sis_taxon_id                     UInt64,
+        criteria                         String,
+        url                              String,
+        sis_id                           UInt64,
         scientific_name                  String,
-        population_size                  Nullable(String),
-        population_trend                 Nullable(String),
-        population_trend_code            Nullable(Float32),
-        red_list_category_version        Nullable(Float32),
-        red_list_category                Nullable(String),
-        red_list_category_code           Nullable(String),
+        population_size                  LowCardinality(String) default 'empty',
+        population_trend                 LowCardinality(String) default 'empty',
+        population_trend_code            Float32 default 0.0,
+        red_list_category_version        Float32 default 0.0,
+        red_list_category                LowCardinality(String) default 'empty',
+        red_list_category_code           LowCardinality(String) default 'empty',
         `CREATE_DTTM`                    DateTime default now()
     )
-    PRIMARY KEY (assessment_id)"""
+    ORDER BY (latest, red_list_category_code, year_published, scientific_name, sis_taxon_id, assessment_id)"""
     with hook.get_client() as client:
         client.command(assessments_ddl)
 
@@ -92,17 +92,17 @@ def load__taxonomy(input_dir, schema_name='detail', table_name='taxonomy'):
     # taxonomy_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     taxonomy_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         sis_taxon_id          UInt64,
-        kingdom_name          Nullable(String),
-        phylum_name           Nullable(String),
-        class_name            Nullable(String),
-        order_name            Nullable(String),
-        family_name           Nullable(String),
-        genus_name            Nullable(String),
-        species_name          Nullable(String),
+        kingdom_name          LowCardinality(String) default 'empty',
+        phylum_name           LowCardinality(String) default 'empty',
+        class_name            LowCardinality(String) default 'empty',
+        order_name            LowCardinality(String) default 'empty',
+        family_name           LowCardinality(String) default 'empty',
+        genus_name            LowCardinality(String) default 'empty',
+        species_name          LowCardinality(String) default 'empty',
         scientific_name       String,
         `CREATE_DTTM`         DateTime default now()
     )
-    PRIMARY KEY (scientific_name)"""
+    order by (sis_taxon_id, scientific_name)"""
     with hook.get_client() as client:
         client.command(taxonomy_ddl)
 
@@ -155,11 +155,12 @@ def load__conservation_actions_in_place(input_dir, schema_name='detail', table_n
     # ca_in_place_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     ca_in_place_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id                 UInt64,
-        conservation_action_name      Nullable(String),
-        feature                       Nullable(String),
-        value                         Nullable(String),
+        conservation_action_name      LowCardinality(String) default 'empty',
+        feature                       LowCardinality(String) default 'empty',
+        value                         LowCardinality(String) default 'empty',
         `CREATE_DTTM`                 DateTime default now()
-    )"""
+    )
+    order by (assessment_id)"""
     with hook.get_client() as client:
         client.command(ca_in_place_ddl)
 
@@ -212,11 +213,11 @@ def load__conservation_actions(input_dir, schema_name='detail', table_name="cons
     # ca_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     ca_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id   UInt64,
-        code            String,
-        description     String,
+        code            LowCardinality(String) default 'empty',
+        description     LowCardinality(String) default 'empty',
         `CREATE_DTTM`   DateTime default now()
     )
-    PRIMARY KEY (assessment_id, description)"""
+    order by (code, description, assessment_id)"""
     with hook.get_client() as client:
         client.command(ca_ddl)
 
@@ -269,14 +270,14 @@ def load__locations(input_dir, schema_name='detail', table_name="locations"):
     # locations_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     locations_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
-        origin           Nullable(String),
-        presence         Nullable(String),
+        origin           LowCardinality(String) default 'empty',
+        presence         LowCardinality(String) default 'empty',
         seasonality      Array(String),
         country          String,
-        code             Nullable(String),
+        code             LowCardinality(String) default 'empty',
         `CREATE_DTTM`    DateTime default now()
     )
-    PRIMARY KEY (assessment_id, country)"""
+    ORDER BY (country, assessment_id)"""
     with hook.get_client() as client:
         client.command(locations_ddl)
 
@@ -329,11 +330,11 @@ def load__habitats(input_dir, schema_name='detail', table_name='habitats'):
     # habitat_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     habitat_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
-        habitat          String,
-        code             String,
+        habitat          LowCardinality(String) default 'empty',
+        code             LowCardinality(String) default 'empty',
         `CREATE_DTTM`    DateTime default now()
     )
-    PRIMARY KEY (assessment_id, habitat)"""
+    ORDER BY (code, habitat, assessment_id)"""
     with hook.get_client() as client:
         client.command(habitat_ddl)
 
@@ -388,15 +389,15 @@ def load__use_and_trade(input_dir, schema_name='detail', table_name='use_and_tra
     # uat_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     uat_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
-        international    Nullable(Bool),
-        national         Nullable(Bool),
-        other            Nullable(Bool),
-        subsistence      Nullable(Bool),
-        use_and_trade    String,
+        international    Bool default False,
+        national         Bool default False,
+        other            Bool default False,
+        subsistence      Bool default False,
+        use_and_trade    LowCardinality(String) default 'empty',
         code             UInt16,
         `CREATE_DTTM`    DateTime default now()
     )
-    PRIMARY KEY (assessment_id, use_and_trade)"""
+    ORDER BY (code, use_and_trade, assessment_id)"""
     with hook.get_client() as client:
         client.command(uat_ddl)
 
@@ -455,14 +456,14 @@ def load__threats(input_dir, schema_name='detail', table_name='threats'):
     threats_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
         timing           String,
-        threat           Nullable(String),
+        threat           LowCardinality(String) default 'empty',
         code             String,
-        threat_lvl1      Nullable(String),
-        threat_lvl2      Nullable(String),
-        threat_lvl3      Nullable(String),
+        threat_lvl1      LowCardinality(String) default 'empty',
+        threat_lvl2      LowCardinality(String) default 'empty',
+        threat_lvl3      LowCardinality(String) default 'empty',
         `CREATE_DTTM`    DateTime default now()
     )
-    PRIMARY KEY (assessment_id, timing, code)"""
+    ORDER BY (code, threat_lvl1, threat, assessment_id)"""
     with hook.get_client() as client:
         query_result = client.command(threats_ddl)
 
@@ -519,14 +520,14 @@ def load__stresses(input_dir, schema_name='detail', table_name='stresses'):
     # stresses_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     stresses_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
-        stress           String,
-        code             String,
-        stress_lvl1      Nullable(String),
-        stress_lvl2      Nullable(String),
-        stress_lvl3      Nullable(String),
+        stress           LowCardinality(String) default 'empty',
+        code             LowCardinality(String) default 'empty',
+        stress_lvl1      LowCardinality(String) default 'empty',
+        stress_lvl2      LowCardinality(String) default 'empty',
+        stress_lvl3      LowCardinality(String) default 'empty',
         `CREATE_DTTM`    DateTime default now()
     )
-    PRIMARY KEY (assessment_id, code)"""
+    ORDER BY (stress_lvl1, stress, code, assessment_id)"""
     with hook.get_client() as client:
         query_result = client.command(stresses_ddl)
 
@@ -581,11 +582,11 @@ def load__systems(input_dir, schema_name='detail', table_name='systems'):
     # systems_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     systems_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
-        system           String,
-        code             String,
+        system           LowCardinality(String) default 'empty',
+        code             LowCardinality(String) default 'empty',
         `CREATE_DTTM`    DateTime default now()
     )
-    PRIMARY KEY (assessment_id, system)"""
+    ORDER BY (code, system, assessment_id)"""
     with hook.get_client() as client:
         query_result = client.command(systems_ddl)
 
@@ -640,11 +641,11 @@ def load__scopes(input_dir, schema_name='detail', table_name='scopes'):
     # scopes_ddl = f"""DROP TABLE IF EXISTS {schema_name}.{table_name}"""
     scopes_ddl = f"""CREATE TABLE IF NOT EXISTS {schema_name}.{table_name} (
         assessment_id    UInt64,
-        scope            String,
-        code             String,
+        scope            LowCardinality(String) default 'empty',
+        code             LowCardinality(String) default 'empty',
         `CREATE_DTTM`    DateTime default now()
     )
-    PRIMARY KEY (assessment_id, scope)"""
+    ORDER BY (code, scope, assessment_id)"""
     with hook.get_client() as client:
         query_result = client.command(scopes_ddl)
 

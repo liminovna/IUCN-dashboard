@@ -5,16 +5,17 @@ CREATE TABLE IF NOT EXISTS datamart.threats__datamart
     `assessment_date`         Nullable(DateTime),
     `scientific_name`         String,
     `year_published`          UInt16,
-    `population_trend`        Nullable(String),
-    `red_list_category`       Nullable(String),
-    `red_list_category_code`  Nullable(String),
-    `category_sorted`         Nullable(String),
-    `timing`                  Nullable(String),
+    `population_trend`        LowCardinality(String) default 'empty',
+    `red_list_category`       LowCardinality(String) default 'empty',
+    `red_list_category_code`  LowCardinality(String) default 'empty',
+    `category_sorted`         LowCardinality(String) default 'empty',
+    `timing`                  LowCardinality(String) default 'empty',
     `threat`                  String,
     `system`                  String,
-    `habitat`                 Nullable(String),
+    `habitat`                 LowCardinality(String) default 'empty',
     `CREATE_DTTM`             DateTime default now()
-);
+)
+ORDER BY (system, population_trend, category_sorted, threat, habitat);
 
 TRUNCATE TABLE datamart.threats__datamart;
 

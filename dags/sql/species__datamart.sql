@@ -2,23 +2,23 @@
 CREATE TABLE IF NOT EXISTS datamart.species__datamart
 (
     `scientific_name`              String,
-    `kingdom_name`                 Nullable(String),
-    `phylum_name`                  Nullable(String),
-    `class_name`                   Nullable(String),
-    `order_name`                   Nullable(String),
-    `family_name`                  Nullable(String),
-    `genus_name`                   Nullable(String),
-    `species_name`                 Nullable(String),
+    `kingdom_name`                 LowCardinality(String) default 'empty',
+    `phylum_name`                  LowCardinality(String) default 'empty',
+    `class_name`                   LowCardinality(String) default 'empty',
+    `order_name`                   LowCardinality(String) default 'empty',
+    `family_name`                  LowCardinality(String) default 'empty',
+    `genus_name`                   LowCardinality(String) default 'empty',
+    `species_name`                 LowCardinality(String) default 'empty',
     `assessment_id`                UInt64,
-    `assessment_date`              Nullable(DateTime),
+    `assessment_date`              DateTime,
     `year_published`               UInt16,
-    `possibly_extinct`             Nullable(Bool),
-    `possibly_extinct_in_the_wild` Nullable(Bool),
-    `url`                          Nullable(String),
-    `population_trend`             Nullable(String),
-    `population_size`              Nullable(String),
-    `red_list_category`            Nullable(String),
-    `red_list_category_code`       Nullable(String),
+    `possibly_extinct`             Bool default False,
+    `possibly_extinct_in_the_wild` Bool default False,
+    `url`                          String,
+    `population_trend`             LowCardinality(String) default 'empty',
+    `population_size`              LowCardinality(String) default 'empty',
+    `red_list_category`            LowCardinality(String) default 'empty',
+    `red_list_category_code`       LowCardinality(String) default 'empty',
     `scopes`                       Array(String),
     `countries`                    Array(String),
     `systems`                      Array(String),
@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS datamart.species__datamart
     `stresses`                     Array(String),
     `conservation_actions`         Array(String),
     `CREATE_DTTM`                  DateTime default now()
-);
+)
+ORDER BY (red_list_category ,population_trend, kingdom_name, scientific_name, assessment_id);
 
 TRUNCATE TABLE datamart.species__datamart;
 

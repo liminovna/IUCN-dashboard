@@ -256,7 +256,7 @@ class dataQualityReport:
         if not isinstance(criterion_params['check_subset'], str):
             raise Exception('`check_subset` must be a string!')
 
-        missing_count = self.data[criterion_params['check_subset']].isna().sum()
+        missing_count = len(self.data[(self.data[criterion_params['check_subset']].isna()) | (self.data[criterion_params['check_subset']] == 'empty')])
         if missing_count == 0:
             return {'status': 'ok'}
         return {'status': 'failed', 'comment': f' Found {missing_count} ({round(missing_count/len(self.data)*100, 2)}%) missing values'}

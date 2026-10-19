@@ -268,12 +268,13 @@ def iucn_load_red_list_categories_mapping():
         with hook.get_client() as client:
             # create if necessary and truncate
             ddl = f"""CREATE TABLE IF NOT EXISTS dict.{table_name} (
-                version         Nullable(String),
+                version         LowCardinality(String) default 'empty',
                 description     String,
-                code            Nullable(String),
+                code            LowCardinality(String) default 'empty',
                 category_sorted Nullable(String),
                 `CREATE_DTTM`   DateTime default now()
-            )"""
+            )
+            ORDER BY (version, code)"""
             client.command(ddl)
             client.command(f'TRUNCATE TABLE dict.{table_name}')
 
@@ -496,14 +497,14 @@ def iucn_load_threats__dict():
         with hook.get_client() as client:
             # create if necessary and truncate
             ddl = f"""CREATE TABLE IF NOT EXISTS dict.{table_name} (
-                description      Nullable(String),
+                description      String,
                 code             String,
-                threat_lvl1      Nullable(String),
+                threat_lvl1      LowCardinality(String) default 'empty',
                 threat_lvl2      Nullable(String),
                 threat_lvl3      Nullable(String),
                 `CREATE_DTTM`    DateTime default now()
             )
-            PRIMARY KEY (code)"""
+            ORDER BY (code, threat_lvl1)"""
             client.command(ddl)
             client.command(f'TRUNCATE TABLE dict.{table_name}')
             
@@ -731,12 +732,12 @@ def iucn_load_stresses__dict():
             ddl = f"""CREATE TABLE IF NOT EXISTS dict.{table_name} (
                 description      String,
                 code             String,
-                stress_lvl1      Nullable(String),
+                stress_lvl1      LowCardinality(String) default 'empty',
                 stress_lvl2      Nullable(String),
                 stress_lvl3      Nullable(String),
                 `CREATE_DTTM`    DateTime default now()
             )
-            PRIMARY KEY (code)"""
+            ORDER BY (code)"""
             client.command(ddl)
             client.command(f'TRUNCATE TABLE dict.{table_name}')
             
@@ -1015,13 +1016,13 @@ def iucn_load_habitat_system_mapping():
             ddl = f"""CREATE TABLE IF NOT EXISTS  dict.{table_name}(
                 habitat         String,
                 habitat_code    String,
-                habitat_lvl1    String,
+                habitat_lvl1    LowCardinality(String) default 'empty',
                 habitat_lvl2    Nullable(String),
                 habitat_lvl3    Nullable(String),
                 system          Nullable(String),
                 `CREATE_DTTM`   DateTime default now()
             )
-            PRIMARY KEY (habitat_code)"""
+            ORDER BY (habitat_code)"""
             client.command(ddl)
             client.command(f'TRUNCATE TABLE dict.{table_name}')
             
