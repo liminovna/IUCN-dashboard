@@ -90,9 +90,9 @@ The project consists of three main components:
 
 - [ETL pipeline in Airflow](link)
 - [Data warehouse in ClickHouse](link)
-- [Interactive dashboard in Apache Superset](link)
+- [Interactive dashboard in Apache Superset](documentation/superset_readme.md/)
 
-For more detailed information about each component, see the corresponding documentation.
+For more detailed information about each component's implementation, see the corresponding documentation.
 
 ## Limitations
 
