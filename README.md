@@ -39,7 +39,7 @@ On September 29th 2026, the data encompassess 6,230 assessments published betwee
 This is a pet project developed to showcase full analytical workflow from API ingestion, orchestration, data modeling, quality checks, warehouse design, dashboarding, and interpretation.
 
  <p align="center">
-<img src="documentation/assets/dataflow.png" alt="Data flow diagram"/></p>
+<img src="documentation/assets/dataflow.png" alt="Data flow diagram"/><i>Data flow diagram</i></p>
 
 Key skills and tools:
 
