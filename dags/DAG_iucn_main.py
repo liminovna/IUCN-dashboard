@@ -581,22 +581,19 @@ def iucn_main():
         load_func.load__scopes(input_dir)
 
 
-    # # =====================================
-    # # Task sequence
-    # # =====================================
-    # if_start = check_todays_progress(data_dir=DATA_DIR)
-    # dq_table = check_data_quality_table()
-    # # Task group ref_tables (see above)
-    # raw_assessments_countries_result = extract__raw_assessment_lists(token=token, url=url, output_dir=DATA_RAW_COUNTRIES)
-    # raw_assessments = extract__raw_assessments(input_dir=raw_assessments_countries_result, token=token, url=url, output_dir=DATA_RAW_ASSESSMENTS)
-    # parsed = parse__raw_data(input_dir=raw_assessments, output_dir=DATA_STAGE)
-    # normalized = normalize_data(input_path=parsed, output_dir=DATA_DETAIL)
-    # loaded = load_to_db(input_dir=normalized)
+    # =====================================
+    # Task sequence
+    # =====================================
+    if_start = check_todays_progress(data_dir=DATA_DIR)
+    dq_table = check_data_quality_table()
+    # Task group ref_tables (see above)
+    raw_assessments_countries_result = extract__raw_assessment_lists(token=token, url=url, output_dir=DATA_RAW_COUNTRIES)
+    raw_assessments = extract__raw_assessments(input_dir=raw_assessments_countries_result, token=token, url=url, output_dir=DATA_RAW_ASSESSMENTS)
+    parsed = parse__raw_data(input_dir=raw_assessments, output_dir=DATA_STAGE)
+    normalized = normalize_data(input_path=parsed, output_dir=DATA_DETAIL)
+    loaded = load_to_db(input_dir=normalized)
 
-    # if_start >> dq_table >> ref_tables >> raw_assessments_countries_result
-    # parsed >> normalized >> loaded
+    if_start >> dq_table >> ref_tables >> raw_assessments_countries_result
+    parsed >> normalized >> loaded
 
-    loaded = load_to_db(input_dir=DATA_DETAIL)
-    
-    ref_tables >> loaded
 iucn_main()
