@@ -1,24 +1,27 @@
 # Notes on dashboard implementation
 
 ## Styling and color coding
-The dashboard is stylized to have a color scheme similar to the one used on the IUCN Red List website:
+
+The dashboard uses a color scheme inspired by the IUCN Red List website.
 
 <img src="superset_assets/iucn_color_scheme.png" alt="Colors used on the dashboard"/>
 <p align="center"><i>Colors used on the dashboard</i></p>
 
-Some charts leverage color coding:
-- values associated "good" implications (i.e. "Insreasing" population trend) are colored green
-- values associated "bad" implications (i.e. "Decreasing" population trend) are colored red
-- values associated with a warning signal (i.e. "Near threatened" Red List category are colored yellow
-- values associated "neutral" implications (i.e. "Stable" population trend) are colored blue
-- values associated "unknown" implications (i.e. "Unknown" population trend) are colored grey
+Several charts use color coding to make interpretation easier:
 
-Tables also make use of colored emojis as color cues.
+- Values with positive implications, such as an `Increasing` population trend, are shown in green.
+- Values with negative implications, such as a `Decreasing` population trend, are shown in red.
+- Values that signal caution, such as the `Near Threatened` Red List category, are shown in yellow.
+- Values with neutral implications, such as a `Stable` population trend, are shown in blue.
+- Values with unknown implications, such as an `Unknown` population trend, are shown in grey.
 
-Color coding is implemented in both "css styling" and "advanced configuration" sections of the dashboard properties.
+Tables also use colored emojis as additional visual cues.
+
+Color coding is implemented through both the CSS styling and advanced configuration sections of the dashboard properties.
 
 ## Tabs breakdown
-The dashboard consists of four tabs each focusing on one topic.
+
+The dashboard consists of four tabs, each focused on a different topic.
 
 ### Overview
 
