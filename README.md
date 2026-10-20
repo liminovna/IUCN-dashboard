@@ -26,10 +26,10 @@ Near Threatened (NT) – Likely to become endangered in the near future
 - Widespread and abundant taxa are included in this category.
 - Data deficient (DD) – Not enough data to make an assessment of its risk of extinction
 - Not evaluated (NE) – Has not yet been evaluated against the criteria.
- <p align="center">
+<p align="center">
 <img src="documentation/assets/asian_black_bear.png" alt="Screenshot from a Wikipedia article on an Asian black bear" width="200"/></p>
-
-*[Example](https://en.wikipedia.org/wiki/Asian_black_bear) of a species assessed by the IUCN and assigned a conservation status*
+<p align="center">
+<a href="https://en.wikipedia.org/wiki/Asian_black_bear">Example</a> of a species assessed by the IUCN and assigned a conservation status</p>
 
 
 ## Data
@@ -38,7 +38,7 @@ On September 29th 2026, the data encompassess 6,230 assessments published betwee
 ## Skills and tools
 This is a pet project developed to showcase full analytical workflow from API ingestion, orchestration, data modeling, quality checks, warehouse design, dashboarding, and interpretation.
 
- <p align="center">
+<p align="center">
 <img src="documentation/assets/dataflow.png" alt="Data flow diagram"/><i>Data flow diagram</i></p>
 
 Key skills and tools:
@@ -69,7 +69,7 @@ The number of assessments carried out (not published!) each year has been uneven
 
 In years with a high volume of assessments, the proportion of assessments resulting in a threatened category or a declining population trend tends to be lower. Conversely, the highest proportions of threatened statuses and declining trends occur in years with relatively few assessments. While there seems to be an inverse relationship between assessment volume and the share of “unfavourable” outcomes, this likely reflects differences in the species assessed rather than an actual improvement in conservation status.
 
-**Q3. What are the most common threats affecting species with declining populations, and which conservation actions can help most?**
+**Q3. What are the most common threats affecting the assessed species with declining populations, and which conservation actions can help most?**
 
 Among threatened animal species, the five most frequently recorded threats are agriculture and aquaculture, biological resource use, climate change and severe weather, pollution, and natural system modifications. Most of these threats are closely linked to human activity, unlike threats such as geological events or problematic species, genes, and diseases.
 
