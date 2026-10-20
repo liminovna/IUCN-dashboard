@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS datamart.species__datamart
     `assessment_id`                UInt64,
     `assessment_date`              DateTime,
     `year_published`               UInt16,
+    `latest`                       Bool default False,
     `possibly_extinct`             Bool default False,
     `possibly_extinct_in_the_wild` Bool default False,
     `url`                          String,
@@ -28,30 +29,18 @@ CREATE TABLE IF NOT EXISTS datamart.species__datamart
     `conservation_actions`         Array(String),
     `CREATE_DTTM`                  DateTime default now()
 )
-ORDER BY (red_list_category ,population_trend, kingdom_name, scientific_name, assessment_id);
+ORDER BY (
+    red_list_category, 
+    population_trend, 
+    kingdom_name, 
+    scientific_name, 
+    assessment_id
+);
 
 TRUNCATE TABLE datamart.species__datamart;
 
 INSERT INTO datamart.species__datamart (* EXCEPT(`CREATE_DTTM`))
-WITH latest_assessments AS
-(
-    SELECT
-        assessment_id,
-        sis_taxon_id,
-        scientific_name,
-        assessment_date,
-        year_published,
-        possibly_extinct,
-        possibly_extinct_in_the_wild,
-        url,
-        population_trend,
-        population_size,
-        red_list_category,
-        red_list_category_code
-    FROM detail.assessments a
-    WHERE latest = 1
-    AND not exists (select 1 from datamart.overview__datamart d where a.assessment_id = d.assessment_id)
-),
+WITH 
 country_arrays AS
 (
     SELECT
@@ -110,6 +99,14 @@ action_arrays AS
     FROM detail.conservation_actions
     WHERE not (code ilike '5_4%' or code ilike '5_1%')
     GROUP BY assessment_id
+),
+use_and_trade_arrays AS
+(
+    SELECT
+        assessment_id,
+        groupUniqArray(use_and_trade) AS uses_and_trades
+    FROM detail.use_and_trade
+    GROUP BY assessment_id
 )
 SELECT
     t.scientific_name as scientific_name,
@@ -124,6 +121,7 @@ SELECT
     a.assessment_id as assessment_id,
     a.assessment_date,
     a.year_published,
+    a.latest,
     a.possibly_extinct,
     a.possibly_extinct_in_the_wild,
     a.url,
@@ -138,9 +136,10 @@ SELECT
     coalesce(ha.habitats, []) AS habitats,
     coalesce(ta.threats, []) AS threats,
     coalesce(st.stresses, []) AS stresses,
-    coalesce(aa.conservation_actions, []) AS conservation_actions
+    coalesce(aa.conservation_actions, []) AS conservation_actions,
+    coalesce(uses_and_trades, []) as uses_and_trades
 
-FROM latest_assessments AS a
+FROM detail.assessments AS a
 LEFT JOIN detail.taxonomy AS t
     ON a.sis_taxon_id = t.sis_taxon_id
 LEFT JOIN country_arrays AS ca
@@ -157,6 +156,8 @@ LEFT JOIN scope_arrays AS sc
     ON a.assessment_id = sc.assessment_id
 LEFT JOIN action_arrays AS aa
     ON a.assessment_id = aa.assessment_id
+left join use_and_trade_arrays as u
+    ON a.assessment_id = u.assessment_id
 ORDER BY
     a.scientific_name,
     a.year_published DESC;
