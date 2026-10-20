@@ -9,11 +9,11 @@ The dashboard uses a color scheme inspired by the IUCN Red List website.
 
 Several charts use color coding to make interpretation easier:
 
-- Values with positive implications, such as an `Increasing` population trend, are shown in green.
-- Values with negative implications, such as a `Decreasing` population trend, are shown in red.
-- Values that signal caution, such as the `Near Threatened` Red List category, are shown in yellow.
-- Values with neutral implications, such as a `Stable` population trend, are shown in blue.
-- Values with unknown implications, such as an `Unknown` population trend, are shown in grey.
+- Values with positive implications, such as an Increasing population trend, are shown in **green**.
+- Values with negative implications, such as a Decreasing population trend, are shown in **red**.
+- Values that signal caution, such as the Near Threatened Red List category, are shown in **yellow**.
+- Values with neutral implications, such as a Stable population trend, are shown in **blue**.
+- Values with unknown implications, such as an Unknown population trend, are shown in **grey**.
 
 Tables also use colored emojis as additional visual cues.
 
