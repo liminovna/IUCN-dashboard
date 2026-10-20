@@ -18,10 +18,9 @@ CREATE TABLE IF NOT EXISTS datamart.changes__datamart (
     `prev_category_sorted`         Nullable(String),
     `n_assessments`                UInt64,
     `assessment_rank`              UInt64,
-    `systems`                      Array(String),
-    `habitats`                     Array(String),
     `CREATE_DTTM`                  DateTime default now()
-);
+)
+ORDER BY (kingdom, population_trend, category_sorted);
 
 TRUNCATE TABLE datamart.changes__datamart;
 
@@ -31,23 +30,6 @@ WITH assessments_counts as (
     from detail.assessments a
     left join detail.taxonomy t using scientific_name
     group by 1,2
-),
-system_arrays AS
-(
-    SELECT
-        assessment_id,
-        groupUniqArray(system) AS systems
-    FROM detail.systems
-    GROUP BY assessment_id
-),
-habitat_arrays AS
-(
-    SELECT
-        assessment_id,
-        groupUniqArray(m.habitat_lvl1) AS habitats
-    FROM detail.habitats ha
-    left join dict.habitat_system_mapping m on m.habitat_code = ha.code
-    GROUP BY assessment_id
 ),
 previous_assessments as (
     select 
@@ -73,15 +55,9 @@ a.red_list_category_code,
 rl.category_sorted,
 prev_rl.category_sorted as prev_category_sorted,
 c.n_assessments,
-row_number() over (partition by scientific_name order by assessment_date asc) as assessment_rank,
-coalesce(sa.systems, []) AS systems,
-coalesce(ha.habitats, []) AS habitats
+row_number() over (partition by scientific_name order by assessment_date asc) as assessment_rank
 from assessments_counts c
 left join detail.assessments a using scientific_name
 left join dict.red_list_categories_mapping rl on a.red_list_category_code = rl.code and rl.version = '3.1'
 left join previous_assessments prev_a on a.assessment_id = prev_a.assessment_id
 left join dict.red_list_categories_mapping prev_rl on prev_a.prev_red_list_category_code = prev_rl.code and prev_rl.version = '3.1'
-LEFT JOIN system_arrays AS sa
-    ON a.assessment_id = sa.assessment_id
-LEFT JOIN habitat_arrays AS ha
-    ON a.assessment_id = ha.assessment_id;
