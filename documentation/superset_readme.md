@@ -1,4 +1,10 @@
 # Notes on dashboard implementation
+## Key features
+- Jinja templates
+- CSS styling
+- Color coding with advanced configurations
+- Cross-filtering
+- Clickable links
 
 ## Styling and color coding
 
@@ -9,15 +15,15 @@ The dashboard uses a color scheme inspired by the IUCN Red List website.
 
 Several charts use color coding to make interpretation easier:
 
-- Values with positive implications, such as an Increasing population trend, are shown in **green**.
-- Values with negative implications, such as a Decreasing population trend, are shown in **red**.
-- Values that signal caution, such as the Near Threatened Red List category, are shown in **yellow**.
-- Values with neutral implications, such as a Stable population trend, are shown in **blue**.
-- Values with unknown implications, such as an Unknown population trend, are shown in **grey**.
+- Values with positive implications, such as an Increasing population trend, are shown in green.
+- Values with negative implications, such as a Decreasing population trend, are shown in red.
+- Values that signal caution, such as the Near Threatened Red List category, are shown in yellow.
+- Values with neutral implications, such as a Stable population trend, are shown in blue.
+- Values with unknown implications, such as an Unknown population trend, are shown in grey.
 
 Tables also use colored emojis as additional visual cues.
 
-Color coding is implemented through both the CSS styling and advanced configuration sections of the dashboard properties.
+Color coding is implemented through both the **CSS styling** and **advanced configuration** sections of the dashboard properties.
 
 ## Tabs breakdown
 
@@ -35,7 +41,7 @@ This tab gives a high-level summary of the dashboard data, including:
 
 Although the dashboard focuses on species recorded in Russia, geographic range information still provides useful context.
 
-The data can be filtered by conservation status, and the underlying dataset is structured to support dynamic cross-filtering.
+The data can be filtered by conservation status, and the underlying dataset is structured to support dynamic **cross-filtering**.
 
 <img src="superset_assets/screenshots/IUCN data on biodiversity in Russia__Overview.png" alt="Screenshot of tab 'Change over time'"/>
 <p align="center"><i>Tab "Overview"</i></p>
@@ -48,11 +54,11 @@ Because coverage is heavily skewed across taxonomic groups, users can filter by 
 
 Two sub-tabs are available at the top:
 
-- **Assessment volume** shows the uneven annual distribution of assessments and the delay between assessment finalization and publication, both of which complicate trend interpretation.
+- *Assessment volume* shows the uneven annual distribution of assessments and the delay between assessment finalization and publication, both of which complicate trend interpretation.
 
-- **Changes in statuses** displays the relative share of each conservation status by assessment year.
+- *Changes in statuses* displays the relative share of each conservation status by assessment year.
 
-The bottom table lists the species with the oldest latest assessments—those that have not been reassessed for the longest time. It includes the species name, assessment date, time since assessment, conservation status, and a clickable link to the assessment.
+The bottom table lists the species with the oldest latest assessments—those that have not been reassessed for the longest time. It includes the species name, assessment date, time since assessment, conservation status, and a **clickable link** to the assessment.
 
 <img src="superset_assets/screenshots/IUCN data on biodiversity in Russia__Change over time__Assessment volume.png" alt="Screenshot of tab 'Change over time'"/>
 <p align="center"><i>Tab "Change over time". Assessment volume is active</i></p>
@@ -80,7 +86,7 @@ The pivot table at the bottom shows, for each habitat, the percentage of assessm
 
 This tab contains a single table that displays all assessments matching the selected filters. Users can filter assessments by taxa, conservation status, assessment metadata, threats, and habitats.
 
-The table includes columns for all filterable fields, as well as a clickable link to the corresponding assessment on the IUCN website.
+The table includes columns for all filterable fields, as well as a **clickable link** to the corresponding assessment on the IUCN website.
 
 Several filters have default values:
 
@@ -88,7 +94,7 @@ Several filters have default values:
 - **Population trend:** `Decreasing`
 - **Latest:** `True`
 
-Habitats, threats, systems, conservation actions, and uses and trades are stored as arrays in the data mart. Jinja templates are used for filtering so that users can filter by an individual value within an array rather than having to match the entire array.
+Habitats, threats, systems, conservation actions, and uses and trades are stored as arrays in the data mart. **Jinja templates** are used for filtering so that users can filter by an individual value within an array rather than having to match the entire array.
 
 <img src="superset_assets/screenshots/IUCN data on biodiversity in Russia__Species explorer.png" alt="Screenshot of tab 'Species explorer'"/>
 <p align="center"><i>Tab "Species explorer"</i></p>

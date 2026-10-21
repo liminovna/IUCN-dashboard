@@ -79,7 +79,7 @@ Fungi show a similar pattern: human activity is a major source of pressure, and 
 
 Among the eight threatened plant species, threats also include problematic species, genes, and diseases. Recommended actions include habitat protection and restoration, harvest management, and control of problematic species.
 
-**Conclusion**
+**Bottom line**
 
 IUCN assessment coverage for species recorded in Russia is dominated by animals, with comparatively limited coverage of plants and fungi. Across all three kingdoms, most assessed species are classified as Least Concern and have stable population trends, suggesting a relatively favourable conservation status among assessed species.
 
