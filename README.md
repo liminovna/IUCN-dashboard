@@ -2,6 +2,11 @@
 
 *This is a pet project developed to showcase full analytical workflow from API ingestion, orchestration, data modeling, quality checks, warehouse design, dashboarding, and interpretation.*
 
+- short doc on ETL-pipeline (Airflow): [link](documentation/airflow_readme.md)
+- short doc on data warehouse (Clickhouse): [link](documentation/clickhouse_readme.md)
+- short doc on interactive dashboard (Superset): [link](documentation/superset_readme.md)
+- insights: [link](#Insights)
+
 ---
 The following project explores IUCN Red List assessments published between 2020 and 2026 for species recorded in the Russian Federation, focusing on conservation status, population trends, threats, and recommended conservation actions. Here, we try to answer the folowing questions:
 
