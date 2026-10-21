@@ -1,20 +1,20 @@
 -- replace
 CREATE TABLE IF NOT EXISTS datamart.overview__datamart
 (
-    `assessment_id`           UInt64,
-    `assessment_date`         DateTime,
-    `kingdom_name`            LowCardinality(String) default 'empty',
-    `scientific_name`         String default 'empty',
-    `year_published`          UInt16,
-    `population_trend`        LowCardinality(String) default 'empty',
-    `red_list_category`       LowCardinality(String) default 'empty',
-    `red_list_category_code`  LowCardinality(String) default 'empty',
-    `category_sorted`         LowCardinality(String) default 'empty',
-    `threat`                  LowCardinality(String) default 'empty',
-    `system`                  LowCardinality(String) default 'empty',
-    `use_and_trade`           LowCardinality(String) default 'empty',
-    `conservation_action`     LowCardinality(String) default 'empty',
-    `CREATE_DTTM`             DateTime default now()
+    `assessment_id`           UInt64                                   COMMENT 'ID of assessment',
+    `assessment_date`         DateTime                                 COMMENT 'Date when the evaluation was finished by the assessor',
+    `kingdom_name`            LowCardinality(String) default 'empty'   COMMENT 'Biological kingdom of the species',
+    `scientific_name`         String default 'empty'                   COMMENT 'Scientific name of the species',
+    `year_published`          UInt16                                   COMMENT 'Year when the evaluation was published',
+    `population_trend`        LowCardinality(String) default 'empty'   COMMENT 'Estimated population trend (text)',                                        
+    `red_list_category`       LowCardinality(String) default 'empty'   COMMENT 'Estimated Red List category (text)',
+    `red_list_category_code`  LowCardinality(String) default 'empty'   COMMENT 'Estimated Red List category (code)',
+    `category_sorted`         LowCardinality(String) default 'empty'   COMMENT 'Estimated Red List category (text with added rank)',
+    `threat`                  LowCardinality(String) default 'empty'   COMMENT 'Threat',
+    `system`                  LowCardinality(String) default 'empty'   COMMENT 'System',
+    `use_and_trade`           LowCardinality(String) default 'empty'   COMMENT 'Use and trade',
+    `conservation_action`     LowCardinality(String) default 'empty'   COMMENT 'Conservation action',
+    `CREATE_DTTM`             DateTime default now()                   COMMENT 'Timestamp when the record was added to the table'
 )
 ORDER BY (system, population_trend, year_published, category_sorted);
 

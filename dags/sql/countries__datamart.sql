@@ -1,10 +1,10 @@
 -- replace
 CREATE TABLE IF NOT EXISTS datamart.countries__datamart
 (
-    `assessment_id` UInt64,
-    `country`       LowCardinality(String) default 'empty',
-    `code`          Nullable(String),
-    `CREATE_DTTM`   DateTime default now()
+    `assessment_id` UInt64                                  COMMENT 'ID of assessment',
+    `country`       LowCardinality(String) default 'empty'  COMMENT 'Country where the species has ever been recorded in',                                
+    `code`          Nullable(String)                        COMMENT 'Code of the country where the species has ever been recorded in',            
+    `CREATE_DTTM`   DateTime default now()                  COMMENT 'Timestamp when the record was added to the table'
 )
 ORDER BY (assessment_id)
 ;

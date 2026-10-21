@@ -1,19 +1,19 @@
 --replace
 CREATE TABLE IF NOT EXISTS datamart.threats__datamart
 (
-    `assessment_id`           UInt64,
-    `assessment_date`         Nullable(DateTime),
-    `scientific_name`         String,
-    `year_published`          UInt16,
-    `population_trend`        LowCardinality(String) default 'empty',
-    `red_list_category`       LowCardinality(String) default 'empty',
-    `red_list_category_code`  LowCardinality(String) default 'empty',
-    `category_sorted`         LowCardinality(String) default 'empty',
-    `timing`                  LowCardinality(String) default 'empty',
-    `threat`                  String,
-    `system`                  String,
-    `habitat`                 LowCardinality(String) default 'empty',
-    `CREATE_DTTM`             DateTime default now()
+    `assessment_id`           UInt64                                    COMMENT 'ID of assessment',
+    `assessment_date`         Nullable(DateTime)                        COMMENT 'Date when the evaluation was finished by the assessor',
+    `scientific_name`         String                                    COMMENT 'Scientific name of the species',
+    `year_published`          UInt16                                    COMMENT 'Year when the evaluation was published',
+    `population_trend`        LowCardinality(String) default 'empty'    COMMENT 'Estimated population trend (text)',
+    `red_list_category`       LowCardinality(String) default 'empty'    COMMENT 'Estimated Red List category (text)',
+    `red_list_category_code`  LowCardinality(String) default 'empty'    COMMENT 'Estimated Red List category (code)',
+    `category_sorted`         LowCardinality(String) default 'empty'    COMMENT 'Estimated Red List category (text with added rank)',
+    `timing`                  LowCardinality(String) default 'empty'    COMMENT 'Timing of the threat',                                
+    `threat`                  String                                    COMMENT 'Threat',
+    `system`                  String                                    COMMENT 'System of habitat',
+    `habitat`                 LowCardinality(String) default 'empty'    COMMENT 'Habitat',                                
+    `CREATE_DTTM`             DateTime default now()                    COMMENT 'Timestamp when the record was added to the table'
 )
 ORDER BY (system, population_trend, category_sorted, threat, habitat);
 

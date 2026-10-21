@@ -1,24 +1,24 @@
 -- replace
 CREATE TABLE IF NOT EXISTS datamart.changes__datamart (
-    `assessment_id`                UInt64,
-    `assessment_date`              DateTime,
-    `year_published`               UInt16,
-    `latest`                       Bool,
-    `url`                          String,
-    `possibly_extinct`             Bool,
-    `possibly_extinct_in_the_wild` Bool,
-    `scientific_name`              String,
-    `kingdom`                      String,
-    `population_trend`             LowCardinality(String) default 'empty',
-    `population_trend_code`        Float32 default 0.0,
-    `red_list_category_version`    LowCardinality(String) default 'empty',
-    `red_list_category`            LowCardinality(String) default 'empty',
-    `red_list_category_code`       LowCardinality(String) default 'empty',
-    `category_sorted`              LowCardinality(String) default 'empty',
-    `prev_category_sorted`         Nullable(String),
-    `n_assessments`                UInt64,
-    `assessment_rank`              UInt64,
-    `CREATE_DTTM`                  DateTime default now()
+    `assessment_id`                UInt64                                   COMMENT 'ID of assessment',
+    `assessment_date`              DateTime                                 COMMENT 'Date when the evaluation was finished by the assessor',
+    `year_published`               UInt16                                   COMMENT 'Year when the evaluation was published',
+    `latest`                       Bool                                     COMMENT 'If the assessment is recent and not historical',
+    `url`                          String                                   COMMENT 'Link to the assessment on the IUCN website',
+    `possibly_extinct`             Bool                                     COMMENT 'If the species is highly likely to be extinct',
+    `possibly_extinct_in_the_wild` Bool                                     COMMENT 'If the species is highly likely to be extinct in the wild',
+    `scientific_name`              String                                   COMMENT 'Scientific name of the species',
+    `kingdom`                      String                                   COMMENT 'Biological kingdom of the species',
+    `population_trend`             LowCardinality(String) default 'empty'   COMMENT 'Estimated population trend (text)',
+    `population_trend_code`        Float32 default 0.0                      COMMENT 'Estimated population trend (code)',
+    `red_list_category_version`    LowCardinality(String) default 'empty'   COMMENT 'Version of Red List category',
+    `red_list_category`            LowCardinality(String) default 'empty'   COMMENT 'Estimated Red List category (text)',
+    `red_list_category_code`       LowCardinality(String) default 'empty'   COMMENT 'Estimated Red List category (code)',
+    `category_sorted`              LowCardinality(String) default 'empty'   COMMENT 'Estimated Red List category (text with added rank)',
+    `prev_category_sorted`         Nullable(String)                         COMMENT 'Red List category according to the previous assessment (text with added rank)',
+    `n_assessments`                UInt64                                   COMMENT 'Total number of assessments for the species',
+    `assessment_rank`              UInt64                                   COMMENT 'Sequential number of the assessment',
+    `CREATE_DTTM`                  DateTime default now()                   COMMENT 'Timestamp when the record was added to the table'
 )
 ORDER BY (kingdom, population_trend, category_sorted);
 
