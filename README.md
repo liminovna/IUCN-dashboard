@@ -92,7 +92,7 @@ Among threatened species, human-related threats are the most common, and **habit
 The following block summarizes the key components of the project and the main implementation details for each one.
 
 ### ETL pipeline in Airflow  
-[View documentation](link)
+[View documentation](documentation/airflow_readme.md)
 
 **Key features**
 
@@ -101,7 +101,7 @@ The following block summarizes the key components of the project and the main im
 - Data-quality checks
 
 ### Data warehouse in ClickHouse  
-[View documentation](link)
+[View documentation](documentation/clickhouse_readme.md)
 
 **Key features**
 

@@ -28,5 +28,5 @@ Schema contains tables used for reporting. Each dashboard tab has a dedicated ta
 Schema contains a single table, `main`, which stores the results of data-quality checks (see the [ETL pipeline documentation](airflow_readme.md#data-quality-checks)).
 
 <p align="center">
-<img src="clickhouse_assets/data_quality.png" width="250" />
+<img src="clickhouse_assets/data_quality.png" />
 </p>
