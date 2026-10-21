@@ -1,14 +1,16 @@
 # Russia’s Biodiversity: IUCN Red List Overview
 
+*This is a pet project developed to showcase full analytical workflow from API ingestion, orchestration, data modeling, quality checks, warehouse design, dashboarding, and interpretation.*
+
+---
 The following project explores IUCN Red List assessments published between 2020 and 2026 for species recorded in the Russian Federation, focusing on conservation status, population trends, threats, and recommended conservation actions. Here, we try to answer the folowing questions:
 
 1. What is the current conservation status of the assessed species recorded in the Russian Federation?
 2. How have conservation statuses and population trends changed over time?
 3. What are the most common threats affecting the assessed species with declining populations, and which conservation actions can help most?
 
-<img src="documentation/superset_assets/screen_recording.gif" alt="Screen recording"/></p>
-
-See screenshots [here](documentation/superset_assets/screenshots)
+<p align="center">
+<img src="documentation/superset_assets/screen_recording.gif" alt="Screen recording"/>See screenshots <a href="documentation/superset_assets/screenshots">here</a></p>
 
 ## Quick note on IUCN
 The International Union for Conservation of Nature’s (IUCN) Red List of Threatened Species is the world’s most comprehensive information source on the global conservation status of animal, fungi and plant species. 
@@ -31,12 +33,12 @@ Near Threatened (NT) – Likely to become endangered in the near future
 <p align="center">
 <a href="https://en.wikipedia.org/wiki/Asian_black_bear">Example</a> of a species assessed by the IUCN and assigned a conservation status</p>
 
+## Implementation
 
-## Data
+### Data
 On September 29th 2026, the data encompassess 6,230 assessments published between year 2020 and 2026 on species recorded in Russia. The data was scraped from [IUCN Red List API v4](https://api.iucnredlist.org/).
 
-## Skills and tools
-This is a pet project developed to showcase full analytical workflow from API ingestion, orchestration, data modeling, quality checks, warehouse design, dashboarding, and interpretation.
+### Skills and tools
 
 <p align="center">
 <img src="documentation/assets/dataflow.png" alt="Data flow diagram"/><i>Data flow diagram</i></p>
@@ -51,6 +53,40 @@ Key skills and tools:
 | brain 🧠 | Analytics and insight delivery|
 
 The project also involved docker, git, HTML and CSS.
+
+### Implementation highlights
+
+The following block summarizes the key components of the project and the main implementation details for each one.
+
+#### ETL pipeline in Airflow  
+[View documentation](documentation/airflow_readme.md)
+
+**Key features**
+
+- DAG parameters
+- Task groups, exception handling, and cross-DAG triggers
+- Data-quality checks
+
+#### Data warehouse in ClickHouse  
+[View documentation](documentation/clickhouse_readme.md)
+
+**Key features**
+
+- Separation of data layers
+- Indexing for query performance
+
+#### Interactive dashboard in Apache Superset  
+[View documentation](documentation/superset_readme.md)
+
+**Key features**
+
+- Color coding and custom styling with CSS
+- Clickable links implemented with HTML
+- Emojis in tables to provide visual cues
+- Jinja templates for complex filtering
+- Cross-filtering between charts
+
+For more detailed information about each component’s implementation, see the corresponding documentation.
 
 ## Insights
 **Q1. What is the current conservation status of species recorded in the Russian Federation?**
@@ -86,40 +122,6 @@ IUCN assessment coverage for species recorded in Russia is dominated by animals,
 However, the annual distribution of assessments is highly uneven, with peaks in 2020 and 2023–2024. These peaks coincide with lower proportions of threatened species, which may reflect differences in the species assessed rather than genuine changes in extinction risk.
 
 Among threatened species, human-related threats are the most common, and **habitat protection** appears to be the most broadly recommended conservation action. While it may not eliminate all risks, habitat protection is likely to be one of the most effective measures to help prevent further decline of the assessed species.
-
-## Implementation highlights
-
-The following block summarizes the key components of the project and the main implementation details for each one.
-
-### ETL pipeline in Airflow  
-[View documentation](documentation/airflow_readme.md)
-
-**Key features**
-
-- DAG parameters
-- Task groups, exception handling, and cross-DAG triggers
-- Data-quality checks
-
-### Data warehouse in ClickHouse  
-[View documentation](documentation/clickhouse_readme.md)
-
-**Key features**
-
-- Separation of data layers
-- Indexing for query performance
-
-### Interactive dashboard in Apache Superset  
-[View documentation](documentation/superset_readme.md)
-
-**Key features**
-
-- Color coding and custom styling with CSS
-- Clickable links implemented with HTML
-- Emojis in tables to provide visual cues
-- Jinja templates for complex filtering
-- Cross-filtering between charts
-
-For more detailed information about each component’s implementation, see the corresponding documentation.
 
 ## Limitations
 

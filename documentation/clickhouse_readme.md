@@ -2,6 +2,12 @@
 ## Database structure
 
 The ClickHouse database is organized into four schemas:
+- `dict`
+- `detail`
+- `datamart`
+- `data_quality`
+
+For performance optimization, appropriate **data types** were selected, **nullable** columns were avoided, and **indexes** were created.
 
 ### `dict` schema
 Schema contains reference tables.
@@ -30,5 +36,3 @@ Schema contains a single table, `main`, which stores the results of data-quality
 <p align="center">
 <img src="clickhouse_assets/data_quality.png" />
 </p>
-
-NB: description of the columns is stored in the database
