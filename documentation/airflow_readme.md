@@ -13,6 +13,10 @@ Orchestration is realized through three DAGs:
 
 Since IUCN Red List updates only a few times a year ([source](https://www.iucnredlist.org/assessment/updates)), there is no need (and frankly it is wasteful) to check for new assessments every day, especially when there is no way of limiting API queries with granularity smaller than year. That is why the main DAG is configured to be ran manually and not on schedule.
 
+<p align="center">
+<img src="airflow_assets/iucn_main-graph.png" alt="Main DAG as displayed in Airflow UI"/><i>ETL pipeline implemented in Airflow</i></p>
+
+
 ## Data quality checks
 
 Structural checks are integrated in the tasks because if there is no data or the structure is invalid, we won't be able to run any other checks. 
