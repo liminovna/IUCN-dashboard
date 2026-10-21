@@ -17,7 +17,7 @@ Schema contains tables for core entities such as assessments, threats, habitats,
 <img src="clickhouse_assets/detail.png"/>
 </p>
 
-### `datamart`schema
+### `datamart` schema
 Schema contains tables used for reporting. Each dashboard tab has a dedicated table (see the [dashboard documentation](superset_readme.md)).
 
 <p align="center">
@@ -30,3 +30,5 @@ Schema contains a single table, `main`, which stores the results of data-quality
 <p align="center">
 <img src="clickhouse_assets/data_quality.png" />
 </p>
+
+NB: description of the columns is stored in the database
