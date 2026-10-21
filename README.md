@@ -33,12 +33,10 @@ Near Threatened (NT) – Likely to become endangered in the near future
 <p align="center">
 <a href="https://en.wikipedia.org/wiki/Asian_black_bear">Example</a> of a species assessed by the IUCN and assigned a conservation status</p>
 
-## Implementation
-
-### Data
+## Data
 On September 29th 2026, the data encompassess 6,230 assessments published between year 2020 and 2026 on species recorded in Russia. The data was scraped from [IUCN Red List API v4](https://api.iucnredlist.org/).
 
-### Skills and tools
+## Skills and tools
 
 <p align="center">
 <img src="documentation/assets/dataflow.png" alt="Data flow diagram"/><i>Data flow diagram</i></p>
@@ -58,7 +56,7 @@ The project also involved docker, git, HTML and CSS.
 
 The following block summarizes the key components of the project and the main implementation details for each one.
 
-#### ETL pipeline in Airflow  
+#### 1. ETL pipeline in Airflow  
 [View documentation](documentation/airflow_readme.md)
 
 **Key features**
@@ -67,7 +65,7 @@ The following block summarizes the key components of the project and the main im
 - Task groups, exception handling, and cross-DAG triggers
 - Data-quality checks
 
-#### Data warehouse in ClickHouse  
+#### 2. Data warehouse in ClickHouse  
 [View documentation](documentation/clickhouse_readme.md)
 
 **Key features**
@@ -75,7 +73,7 @@ The following block summarizes the key components of the project and the main im
 - Separation of data layers
 - Indexing for query performance
 
-#### Interactive dashboard in Apache Superset  
+#### 3. Interactive dashboard in Apache Superset  
 [View documentation](documentation/superset_readme.md)
 
 **Key features**
