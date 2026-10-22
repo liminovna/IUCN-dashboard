@@ -26,7 +26,10 @@ DAG where the core pipeline logic is implemented.
 4. Call API to fetch a list of assessments of species inhabiting Russia published in current year if parameter `current_year_only` (see screenshot below) is True, otherwise extract lists of all assessments since 2020. This step results in a collection of JSON files stored in `DATA_RAW_COUNTRIES` (local storage).
 5. Call API to fetch detailed data on each assessment that does not exist in the database. The step results in a collection of JSON files stored in `DATA_RAW_ASSESSMENTS` (local storage).
 6. If no new assessments found, skip the rest of the DAG.
-7. Parse JSONs obtained in Step 5, split into multiple tables, save locally.
+7. Parse JSONs obtained in Step 5, split into multiple tables, save locally. 
+
+**Why normalized data?** The raw data retrieved from the IUCN API is stored in nested JSON files; flattening it would produce a large, highly denormalized table. To reduce storage overhead and improve data transparency, the ETL pipeline normalizes this data into separate tables.
+
 8. Load the normalized data to Clickhouse (schema `detail`).
 9. Update datamarts.
 
@@ -35,7 +38,9 @@ DAG where the core pipeline logic is implemented.
 If at any point an exception occurs, the whole DAG is marked is Failed.
 
 ## Reference-table update DAGs (`iucn_load_*`)
-Reference tables act as dictionaries of categorical values, their codes and suppementary information added during the tranformation stage of each DAG. Updates of reference tables are organized into separate multi-task DAGs:
+[What are reference tables?](clickhouse_readme.md)
+
+Updates of reference tables are organized into separate multi-task DAGs:
 
 |DAG id|Description|
 |------|-----------|

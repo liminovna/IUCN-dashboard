@@ -12,6 +12,8 @@ For performance optimization, appropriate **data types** were selected, **nullab
 ### `dict` schema
 Schema contains reference tables.
 
+Reference tables act as dictionaries of categorical values, their codes and suppementary information added during the tranformation stage.
+
 <p align="center">
 <img src="clickhouse_assets/dict.png" align="center"/>
 </p>
