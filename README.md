@@ -59,7 +59,7 @@ The project also involved docker, git, HTML and CSS.
 
 ### Implementation highlights
 
-The following block summarizes the key components of the project and the main implementation details for each one.
+The following section summarizes the key components of the project and the main implementation details for each one.
 
 #### 1. ETL pipeline in Airflow  
 [View documentation](documentation/airflow_readme.md)
@@ -77,6 +77,7 @@ The following block summarizes the key components of the project and the main im
 
 - Separation of data layers
 - Indexing for query performance
+- Carefully choosen appropriate data types
 
 #### 3. Interactive dashboard in Apache Superset  
 [View documentation](documentation/superset_readme.md)
@@ -145,8 +146,8 @@ The project could be further developed in several areas, including data explorat
 - Update the latest-assessment flag when new assessments are added.
 - Add additional data-quality checks.
 
-# Sources
+# Resources
 - IUCN 2026. IUCN Red List of Threatened Species. Version 2026-1 <www.iucnredlist.org> 
-https://www.iucnredlist.org/assessment/supporting-information
-https://gist.github.com/rxaviers/7360908
+- IUCN Red List on Wiki https://en.wikipedia.org/wiki/IUCN_Red_List
+- Documentation on the fields in IUCN Red List assessment cards https://www.iucnredlist.org/assessment/supporting-information
 - Clickhouse documentation pages on query optimization: https://clickhouse.com/docs/guides/clickhouse/performance-and-monitoring/query-optimization
