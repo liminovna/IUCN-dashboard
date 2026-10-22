@@ -1,11 +1,15 @@
 # Russia’s Biodiversity: IUCN Red List Overview
 
-> *This is a pet project developed to showcase full analytical workflow from API ingestion, orchestration, data modeling, quality checks, warehouse design, dashboarding, and interpretation.*
+> *A pet project demonstrating an end-to-end analytical workflow: API ingestion, orchestration, data modeling, data-quality checks, warehouse design, dashboarding, and interpretation. The project analyzes IUCN Red List assessments published since 2020 for species recorded in Russia.*
 
-- short doc on ETL-pipeline (Airflow): [link](documentation/airflow_readme.md)
-- short doc on data warehouse (Clickhouse): [link](documentation/clickhouse_readme.md)
-- short doc on interactive dashboard (Superset): [link](documentation/superset_readme.md)
-- insights: [link](#Insights)
+Key features:
+
+- **Airflow ETL pipeline** with DAG parameters, task groups, exception handling, and cross-DAG triggers. ([doc](documentation/airflow_readme.md))
+- **Data-quality checks** covering structural validation, completeness, uniqueness, and value consistency, with results stored for monitoring. ([doc](documentation/airflow_readme.md))
+- **ClickHouse data warehouse** with separated data layers, query-oriented indexing, and carefully chosen data types. ([doc](documentation/clickhouse_readme.md)) 
+- **Apache Superset dashboard** featuring custom CSS styling, color coding, HTML links, emoji-based visual cues, Jinja-based filtering, and cross-filtering between charts. ([doc](documentation/superset_readme.md)) 
+
+For insights see [below](#Insights).
 
 ---
 The following project explores IUCN Red List assessments published between 2020 and 2026 for species recorded in the Russian Federation, focusing on conservation status, population trends, threats, and recommended conservation actions. Here, we try to answer the folowing questions:
