@@ -31,7 +31,11 @@ The dashboard consists of four tabs, each focused on a different topic.
 
 ### Overview
 
-This tab gives a high-level summary of the dashboard data, including:
+This tab helps to understand the volume of the data collected, how the data is distributed and the **peculiarities that should be considered during analysis**. 
+
+> For example, the tab shows inconsistent number of assessments published over the years, as well as a heavy bias towards animals.
+
+A high-level summary of the dashboard data is delivered by the following:
 
 - Total number of latest assessments and species
 - Publication time span
@@ -48,7 +52,7 @@ The data can be filtered by conservation status, and the underlying dataset is s
 
 ### Change over time
 
-This tab explores how assessments have changed over time, covering conservation statuses and assessment volume by both publication year and assessment finalization year.
+This tab explores **how assessments have changed over time**, covering conservation statuses and assessment volume by both publication year and assessment finalization year.
 
 Because coverage is heavily skewed across taxonomic groups, users can filter by kingdom: animals, fungi, or plants.
 
@@ -68,7 +72,7 @@ The bottom table lists the species with the oldest latest assessments—those th
 
 ### Habitats and threats
 
-This tab shows the most common threats recorded for assessed species - threatened species (Red List category is `Vulnerable`, `Endangered` or `Critically Endangered`) with a `Declining` population trend by default - broken down by system and habitat.
+This tab shows the most common threats recorded for assessed species - threatened species (Red List category is `Vulnerable`, `Endangered` or `Critically Endangered`) with a `Declining` population trend by default - broken down by system and habitat. This information helps us understand what threats should be targeted first in order to help prevent further decline of the assessed species that are already or close to being endadgered. 
 
 Filters are available for conservation status, including Red List category and population trend.
 

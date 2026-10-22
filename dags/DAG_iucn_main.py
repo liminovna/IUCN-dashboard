@@ -68,16 +68,18 @@ logger.info(f"Data will be saved to {DATA_DIR}")
 
 dag_doc = """
 # IUCN data: API to Clickhouse
-DAG for extracting raw data on all the assessments for the specified years (current year by default). 
+DAG where the core pipeline logic is implemented.
 
-## Steps
-1. Check if today's progress already loaded. If true and parameter `forced` is false or the dag has not ran today, skip the rest of the steps. Go to step 2.
-2. Update (replace) reference tables by calling a separate DAG.
-3. 
-1. Call API to fetch a list of assessments of species inhabiting Russia published in current year. Results in a collection of JSON files stored in DATA_RAW_COUNTRIES
-2. Call API to fetch detailed data on the relevant assessments. Results in a collection of JSON files stored in DATA_RAW_ASSESSMENTS
-3. Parse JSONs obtained in Step 2, split into multiple tables, load to Clickhouse 
-
+### Steps
+1. Check if today's progress already loaded. If true and parameter `forced` is false or the dag has not ran today, skip the rest of the steps.
+2. Create table for data checks if it does not exist.
+3. Update (replace) reference tables by calling a separate DAG.
+4. Call API to fetch a list of assessments of species inhabiting Russia published in current year if parameter `current_year_only` is True, otherwise extract lists of all assessments since 2020. This step results in a collection of JSON files stored in `DATA_RAW_COUNTRIES` (local storage).
+5. Call API to fetch detailed data on each assessment that does not exist in the database. The step results in a collection of JSON files stored in `DATA_RAW_ASSESSMENTS` (local storage).
+6. If no new assessments found, skip the rest of the DAG.
+7. Parse JSONs obtained in Step 5, split into multiple tables, save locally.
+8. Load the normalized data to Clickhouse (schema `detail`).
+9. Update datamarts.
 ## Data quality
 
 The DAG validates the raw payload, checks nulls, uniqueness, validity of categorical values.
@@ -592,8 +594,14 @@ def iucn_main():
     parsed = parse__raw_data(input_dir=raw_assessments, output_dir=DATA_STAGE)
     normalized = normalize_data(input_path=parsed, output_dir=DATA_DETAIL)
     loaded = load_to_db(input_dir=normalized)
+    datamarts = TriggerDagRunOperator(
+        task_id="trigger__iucn_update__datamarts",
+        trigger_dag_id="iucn_update__datamarts",
+        # wait_for_completion=True,
+        deferrable=True, # When it has nothing to do but wait, an operator can suspend itself and free up the worker for other processes by deferring.
+    )
 
     if_start >> dq_table >> ref_tables >> raw_assessments_countries_result
-    parsed >> normalized >> loaded
+    parsed >> normalized >> loaded >> datamarts
 
 iucn_main()
