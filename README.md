@@ -101,11 +101,14 @@ For more detailed information about each component’s implementation, see the c
 
 Between 2020 and 2026, the IUCN published assessments for 5,526 species recorded in Russia. Among the latest assessments, Least Concern is by far the most common Red List category, accounting for 75% of assessed species. Population trends show a similar pattern: 39% of assessments report a stable population trend. Taken together, 38% of the latest assessments classify a species as Least Concern with a stable population trend, making this the largest combined group.
 
-However, because assessment coverage is heavily biased toward animals, it is useful to consider the three kingdoms separately. The dominance of Least Concern persists across all groups and is especially pronounced among plants (90%) and fungi (80%). A stable population trend is also the most common trend within each kingdom.
+However, because assessment coverage is heavily biased toward animals\*, it is useful to consider the three kingdoms separately. The dominance of Least Concern persists across all groups and is especially pronounced among plants (90%) and fungi (80%). A stable population trend is also the most common trend within each kingdom.
 
 Threatened species with declining populations represent 8% of assessed fungi, 7% of animals, and 2% of plants. However, it should be taken into account that the number of assessed fungi and plants is fairly low -- 213 and 320 respectively. 
 
 In addition, 10% of species are classified as Data Deficient or Not Applicable, highlighting the limits of current assessment coverage.
+
+\* Known species are also unevenly distributed across kingdoms -- animalia accounts for approximately 70% of described species ([source](https://nc.iucnredlist.org/redlist/content/attachment_files/2025-1_RL_Table_1a.pdf)). In terms of biomass, however, plants make up around 80% of global biomass ([source](https://ourworldindata.org/life-on-earth)).
+
 
 **Q2. How have conservation statuses and population trends changed over time?**
 
